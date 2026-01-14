@@ -1,0 +1,104 @@
+.bubbles-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 
+    0 8px 32px rgba(31, 38, 135, 0.37),
+    inset 0 0 20px rgba(255, 255, 255, 0.3),
+    inset -10px -10px 30px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  animation: float 3s ease-in-out infinite;
+}
+
+.bubble:hover {
+  transform: scale(1.1);
+  box-shadow: 
+    0 12px 48px rgba(31, 38, 135, 0.5),
+    inset 0 0 25px rgba(255, 255, 255, 0.4),
+    inset -10px -10px 35px rgba(255, 255, 255, 0.15);
+  z-index: 10;
+}
+
+.bubble::before {
+  content: '';
+  position: absolute;
+  top: 10%;
+  left: 15%;
+  width: 40%;
+  height: 40%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(10px);
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.bubble-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 10px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bubble-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 
+    1px 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 10px rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.1);
+  }
+}
+
+/* 大尺寸气泡的字体调整 */
+.bubble[style*="width: 16"] .bubble-name,
+.bubble[style*="width: 17"] .bubble-name,
+.bubble[style*="width: 18"] .bubble-name {
+  font-size: 18px;
+}
+
+/* 小尺寸气泡的字体调整 */
+.bubble[style*="width: 10"] .bubble-name,
+.bubble[style*="width: 11"] .bubble-name,
+.bubble[style*="width: 12"] .bubble-name {
+  font-size: 13px;
+}

@@ -1,0 +1,140 @@
+.input-panel {
+  padding: 30px 40px;
+  background: rgba(15, 23, 42, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.input-section {
+  flex: 1;
+  min-width: 250px;
+}
+
+.total-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.total-score-label {
+  margin-top: 8px;
+}
+
+.dimension-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dimension-chip {
+  padding: 8px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  background: transparent;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.dimension-chip:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.dimension-chip.selected {
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.weight-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.weight-inputs::-webkit-scrollbar {
+  width: 6px;
+}
+
+.weight-inputs::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.weight-inputs::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.weight-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dimension-name {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.weight-input {
+  width: 80px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  text-align: center;
+}
+
+.weight-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.weight-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.total-weight {
+  padding: 12px 20px;
+  background: rgba(96, 165, 250, 0.2);
+  border: 2px solid #60a5fa;
+  border-radius: 8px;
+  color: #60a5fa;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.total-score {
+  padding: 12px 20px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  color: #10b981;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}

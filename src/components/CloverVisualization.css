@@ -1,0 +1,10 @@
+.clover-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.clover-container svg {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
