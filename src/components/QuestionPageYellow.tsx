@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
 import { useDimension } from '../context/DimensionContext'
 import CloverVisualization from './CloverVisualization'
+import MultiSelectDropdown from './MultiSelectDropdown'
 import './QuestionPage.css'
 
 interface QuestionPageYellowProps {
@@ -9,8 +10,21 @@ interface QuestionPageYellowProps {
 }
 
 const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
-  const { setScore } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({})
+  const { setScore, saveAnswers, getAnswers } = useDimension()
+  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
+    const savedAnswers = getAnswers('yellow-society')
+    // Parse JSON strings back to arrays for checkbox questions
+    const parsedAnswers: { [key: string]: string | string[] } = {}
+    Object.entries(savedAnswers).forEach(([key, val]) => {
+      try {
+        const parsed = JSON.parse(val)
+        parsedAnswers[key] = Array.isArray(parsed) ? parsed : val
+      } catch {
+        parsedAnswers[key] = val
+      }
+    })
+    return parsedAnswers
+  })
   const [moduleScores, setModuleScores] = useState<{ [key: string]: number }>({})
 
   const calculateQuestionScore = (questionId: string, answer: string | string[]): number => {
@@ -53,6 +67,12 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
   const handleAnswerChange = (questionId: string, moduleId: string, value: string | string[]) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
+    // Convert array values to JSON string for storage
+    const storageAnswers: { [key: string]: string } = {}
+    Object.entries(newAnswers).forEach(([key, val]) => {
+      storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
+    })
+    saveAnswers('yellow-society', storageAnswers)
 
     const module = yellowSocietyModules.find(m => m.id === moduleId)
     if (module) {
@@ -66,14 +86,6 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
       const totalDimensionScore = Object.values(newModuleScores).reduce((sum, score) => sum + score, 0)
       setScore('yellow-society', totalDimensionScore)
     }
-  }
-
-  const handleCheckboxChange = (questionId: string, moduleId: string, optionValue: string, checked: boolean) => {
-    const currentValues = (answers[questionId] as string[]) || []
-    const newValues = checked 
-      ? [...currentValues, optionValue]
-      : currentValues.filter(v => v !== optionValue)
-    handleAnswerChange(questionId, moduleId, newValues)
   }
 
   return (
@@ -123,9 +135,14 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                     <div className="input-group">
                       <input
                         type="number"
-                        step="0.01"
                         value={answers[question.id] as string || ''}
                         onChange={(e) => handleAnswerChange(question.id, module.id, e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault()
+                          }
+                        }}
                         className="question-input"
                         placeholder={`Enter value${question.unit ? ` (${question.unit})` : ''}`}
                       />
@@ -149,19 +166,12 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                   )}
 
                   {question.type === 'checkbox' && (
-                    <div className="checkbox-group">
-                      {question.options?.map((option) => (
-                        <label key={option.value} className="checkbox-label">
-                          <input
-                            type="checkbox"
-                            checked={((answers[question.id] as string[]) || []).includes(option.value)}
-                            onChange={(e) => handleCheckboxChange(question.id, module.id, option.value, e.target.checked)}
-                            className="checkbox-input"
-                          />
-                          <span>{option.label} (-{option.score} points)</span>
-                        </label>
-                      ))}
-                    </div>
+                    <MultiSelectDropdown
+                      options={question.options || []}
+                      selectedValues={(answers[question.id] as string[]) || []}
+                      onChange={(values) => handleAnswerChange(question.id, module.id, values)}
+                      placeholder="-- Select conditions (multiple) --"
+                    />
                   )}
 
                   {question.scoringRules && (

@@ -9,8 +9,8 @@ interface QuestionPageCyanProps {
 }
 
 const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
-  const { setScore } = useDimension()
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const { setScore, saveAnswers, getAnswers } = useDimension()
+  const [answers, setAnswers] = useState<Record<string, string>>(() => getAnswers('cyan-data'))
   const [moduleScores, setModuleScores] = useState<Record<string, number>>({})
 
   const calculateQuestionScore = (questionId: string, value: string): number => {
@@ -39,6 +39,7 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
   const handleAnswerChange = (questionId: string, moduleId: string, value: string) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
+    saveAnswers('cyan-data', newAnswers)
 
     // Calculate module score
     const module = cyanDataQuestions.find(m => m.id === moduleId)
@@ -103,9 +104,14 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                     <div className="input-group">
                       <input
                         type="number"
-                        step="0.1"
                         value={answers[question.id] || ''}
                         onChange={(e) => handleAnswerChange(question.id, module.id, e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault()
+                          }
+                        }}
                         className="question-input"
                         placeholder="Enter value (0-100)"
                       />

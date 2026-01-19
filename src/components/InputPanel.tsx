@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { dimensions } from '../data/algorithms'
 import { useDimension } from '../context/DimensionContext'
 import './InputPanel.css'
+
+const { ipcRenderer } = window.require('electron')
 
 const InputPanel: React.FC = () => {
   const {

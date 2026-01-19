@@ -97,17 +97,17 @@ export const yellowSocietyModules: Module[] = [
         question: 'Q5: Extreme Condition Risk Score - Is the analysis process subjected to high temperature, high pressure, or high voltage hazard conditions?',
         type: 'checkbox',
         formula: 'Score = 100 - ΣP_i',
+        options: [
+          { value: 'high-temp', score: 20, label: 'High temperature (>150°C): 20 points (-20 points)' },
+          { value: 'high-pressure', score: 20, label: 'High pressure (>50bar): 20 points (-20 points)' },
+          { value: 'high-voltage', score: 20, label: 'High voltage (>1kV): 20 points (-20 points)' },
+          { value: 'ignition', score: 40, label: 'Ignition: 40 points (-40 points)' }
+        ],
         scoringRules: [
           { score: 10, description: 'Normal pressure operation (e.g., paper chromatography, simple titration)' },
           { score: 8, description: 'Conventional heating (water bath) or conventional HPLC pressure' },
           { score: 6, description: 'UHPLC ultra-high pressure or GC inlet high temperature' },
           { score: 0, description: 'Simultaneously involves high-temperature high-pressure environment (e.g., microwave digestion without explosion-proof safety valve) or radioactive ion source ignition risk' }
-        ],
-        options: [
-          { value: 'high-temp', score: 20, label: 'High temperature (>150°C): 20 points' },
-          { value: 'high-pressure', score: 20, label: 'High pressure (>50bar): 20 points' },
-          { value: 'high-voltage', score: 20, label: 'High voltage (>1kV): 20 points' },
-          { value: 'ignition', score: 40, label: 'Ignition: 40 points' }
         ]
       },
       {

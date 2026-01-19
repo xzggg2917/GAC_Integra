@@ -170,3 +170,53 @@
 .score-badge .metric-value {
   color: #10b981;
 }
+
+.visualization-button-container {
+  max-width: 1400px;
+  margin: 40px auto 0;
+  display: flex;
+  justify-content: center;
+}
+
+.visualization-button {
+  padding: 18px 48px;
+  background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.4);
+}
+
+.visualization-button:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(167, 139, 250, 0.6);
+}
+
+.visualization-button:active {
+  transform: translateY(-1px) scale(1);
+}
+
+.viz-icon {
+  font-size: 24px;
+}
+
+.viz-text {
+  letter-spacing: 0.5px;
+}
+
+.viz-arrow {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+.visualization-button:hover .viz-arrow {
+  transform: translateX(4px);
+}

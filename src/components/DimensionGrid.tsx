@@ -5,9 +5,10 @@ import './DimensionGrid.css'
 
 interface DimensionGridProps {
   onDimensionClick: (dimensionId: string) => void
+  onVisualize: () => void
 }
 
-const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick }) => {
+const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisualize }) => {
   const { getWeight, scores } = useDimension()
 
   return (
@@ -16,7 +17,7 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick }) => {
         {dimensions.map((dimension) => {
           const weight = getWeight(dimension.id)
           const score = scores[dimension.id] || 0
-          const hasQuestions = ['gray-industry', 'yellow-society', 'cyan-data', 'orange-circular'].includes(dimension.id)
+          const hasQuestions = ['gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
 
           return (
             <div 
@@ -63,6 +64,14 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick }) => {
             </div>
           )
         })}
+      </div>
+      
+      <div className="visualization-button-container">
+        <button className="visualization-button" onClick={onVisualize}>
+          <span className="viz-icon">📊</span>
+          <span className="viz-text">View Results Visualization</span>
+          <span className="viz-arrow">→</span>
+        </button>
       </div>
     </div>
   )
