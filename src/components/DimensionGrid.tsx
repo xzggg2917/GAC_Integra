@@ -1,6 +1,7 @@
 import React from 'react'
 import { dimensions } from '../data/algorithms'
 import { useDimension } from '../context/DimensionContext'
+import { getScoreColor } from '../utils/colorUtils'
 import './DimensionGrid.css'
 
 interface DimensionGridProps {
@@ -17,19 +18,21 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisua
         {dimensions.map((dimension) => {
           const weight = getWeight(dimension.id)
           const score = scores[dimension.id] || 0
-          const hasQuestions = ['gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
+          const maxScore = 100 // 每个维度满分100
+          const cardColor = getScoreColor(score, maxScore)
+          const hasQuestions = ['green-ecology', 'blue-practicality', 'gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
 
           return (
             <div 
               key={dimension.id} 
               className={`dimension-card ${hasQuestions ? 'clickable' : ''}`}
-              style={{ borderColor: dimension.color }}
+              style={{ borderColor: cardColor }}
               onClick={() => hasQuestions && onDimensionClick(dimension.id)}
             >
               <div className="dimension-header">
                 <div 
                   className="dimension-icon"
-                  style={{ backgroundColor: dimension.color }}
+                  style={{ backgroundColor: cardColor }}
                 >
                   <span className="dimension-initial">
                     {dimension.name.split(' ')[0].substring(0, 2)}

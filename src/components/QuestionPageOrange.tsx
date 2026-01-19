@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { orangeCircularModules } from '../data/orangeCircularQuestions'
 import { useDimension } from '../context/DimensionContext'
 import CloverVisualization from './CloverVisualization'
+import { getScoreColor } from '../utils/colorUtils'
 import './QuestionPage.css'
 
 interface QuestionPageOrangeProps {
@@ -12,6 +13,10 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
   const { setScore, saveAnswers, getAnswers } = useDimension()
   const [answers, setAnswers] = useState<Record<string, string>>(() => getAnswers('orange-circular'))
   const [moduleScores, setModuleScores] = useState<Record<string, number>>({})
+
+  const maxTotalScore = orangeCircularModules.reduce((sum, module) => sum + module.questions.length * 10, 0)
+  const totalScore = Object.values(moduleScores).reduce((sum, score) => sum + score, 0)
+  const scoreColor = getScoreColor(totalScore, maxTotalScore)
 
   const calculateQuestionScore = (questionId: string, value: string): number => {
     if (!value) return 0
@@ -78,9 +83,9 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="question-page orange-theme">
+    <div className="question-page">
       <div className="question-header">
-        <button className="back-button" onClick={onClose}>
+        <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
         <h2>Orange Circular - Resource Regenerator</h2>
@@ -91,23 +96,28 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
 
       <div className="question-content">
         <div className="questions-panel">
-          {orangeCircularModules.map((module, moduleIndex) => (
+          {orangeCircularModules.map((module, moduleIndex) => {
+            const moduleMaxScore = module.questions.length * 10
+            const moduleScore = moduleScores[module.id] || 0
+            const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
+            
+            return (
             <div key={module.id} className="module-section">
               <div className="module-header">
-                <h3>Module {moduleIndex + 1}: {module.name}</h3>
+                <h3 style={{ color: moduleColor }}>Module {moduleIndex + 1}: {module.name}</h3>
                 <p className="module-focus">Focus: {module.focus}</p>
-                <div className="module-score-badge">
+                <div className="module-score-badge" style={{ backgroundColor: `${moduleColor}33`, borderColor: moduleColor, color: moduleColor }}>
                   Score: {(moduleScores[module.id] || 0).toFixed(1)}/
                   {module.questions.length * 10}
                 </div>
               </div>
 
               {module.questions.map((question) => (
-                <div key={question.id} className="question-item">
+                <div key={question.id} className="question-item" style={{ borderColor: `${moduleColor}33` }}>
                   <label className="question-label">{question.question}</label>
 
                   {question.formula && (
-                    <div className="scoring-hints">
+                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}15`, borderColor: `${moduleColor}33` }}>
                       <strong>Formula:</strong>
                       <div className="scoring-rule">{question.formula}</div>
                     </div>
@@ -148,7 +158,7 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
                   )}
 
                   {question.scoringRules && (
-                    <div className="scoring-hints">
+                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}15`, borderColor: `${moduleColor}33` }}>
                       <strong>Scoring Guide:</strong>
                       {question.scoringRules.map((rule, idx) => (
                         <div key={idx} className="scoring-rule">
@@ -160,7 +170,8 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
-          ))}
+          )
+          })}
         </div>
 
         <div className="visualization-panel">
@@ -172,14 +183,12 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
               score: moduleScores[module.id] || 0,
               maxScore: module.questions.length * 10
             }))}
-            color="#f97316" 
           />
-          <div className="total-score-display">
+          <div className="total-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
             <div className="score-label">Total Score</div>
-            <div className="score-value">
-              {Object.values(moduleScores).reduce((sum, score) => sum + score, 0).toFixed(1)}
+            <div className="score-value" style={{ color: scoreColor }}>
+              {totalScore.toFixed(1)} / {maxTotalScore}
             </div>
-            <div className="score-denominator">/ 100</div>
           </div>
         </div>
       </div>

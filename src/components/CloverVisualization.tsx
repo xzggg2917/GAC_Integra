@@ -1,4 +1,5 @@
 import React from 'react'
+import { getScoreColor } from '../utils/colorUtils'
 import './CloverVisualization.css'
 
 interface Module {
@@ -10,10 +11,9 @@ interface Module {
 
 interface CloverVisualizationProps {
   modules: Module[]
-  color?: string
 }
 
-const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules, color = '#6b7280' }) => {
+const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules }) => {
   const getLeafPath = (index: number, percentage: number): string => {
     const angle = (index * 120 - 90) * Math.PI / 180
     const maxRadius = 80
@@ -64,16 +64,15 @@ const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules, colo
         {/* Clover leaves */}
         {modules.slice(0, 3).map((module, index) => {
           const percentage = (module.score / module.maxScore) * 100
-          const hue = 120 - (percentage * 0.5) // Green (120) to yellow/red (60-0)
-          const color = `hsl(${hue}, 70%, 50%)`
+          const leafColor = getScoreColor(module.score, module.maxScore)
           
           return (
             <g key={module.id}>
               <path
                 d={getLeafPath(index, percentage)}
-                fill={color}
+                fill={leafColor}
                 fillOpacity="0.7"
-                stroke={color}
+                stroke={leafColor}
                 strokeWidth="2"
               />
               <text
@@ -100,7 +99,7 @@ const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules, colo
         })}
 
         {/* Center circle */}
-        <circle cx="150" cy="150" r="15" fill={`${color}CC`} />
+        <circle cx="150" cy="150" r="15" fill="rgba(100, 116, 139, 0.8)" />
         <text
           x="150"
           y="155"
@@ -109,7 +108,7 @@ const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules, colo
           fontSize="10"
           fontWeight="600"
         >
-          {color === '#eab308' ? 'Yellow' : color === '#06b6d4' ? 'Cyan' : color === '#f97316' ? 'Orange' : 'Gray'}
+          Modules
         </text>
       </svg>
     </div>

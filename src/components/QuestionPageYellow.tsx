@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
 import { useDimension } from '../context/DimensionContext'
+import { getScoreColor } from '../utils/colorUtils'
 import CloverVisualization from './CloverVisualization'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import './QuestionPage.css'
@@ -88,10 +89,14 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
     }
   }
 
+  const totalScore = Object.values(moduleScores).reduce((sum, s) => sum + s, 0)
+  const maxTotalScore = yellowSocietyModules.reduce((sum, m) => sum + m.questions.length * 10, 0)
+  const scoreColor = getScoreColor(totalScore, maxTotalScore)
+
   return (
-    <div className="question-page yellow-theme">
+    <div className="question-page">
       <div className="question-header">
-        <button className="back-button" onClick={onClose}>
+        <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
         <h2>Yellow Society - Safety Guardian</h2>
@@ -102,19 +107,24 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
 
       <div className="question-content">
         <div className="questions-panel">
-          {yellowSocietyModules.map((module, moduleIndex) => (
-            <div key={module.id} className="module-section yellow-module">
+          {yellowSocietyModules.map((module, moduleIndex) => {
+            const moduleScore = moduleScores[module.id] || 0
+            const moduleMaxScore = module.questions.length * 10
+            const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
+            
+            return (
+            <div key={module.id} className="module-section">
               <div className="module-header">
-                <h3>Module {moduleIndex + 1}: {module.name}</h3>
+                <h3 style={{ color: moduleColor }}>Module {moduleIndex + 1}: {module.name}</h3>
                 <p className="module-focus">Focus: {module.focus}</p>
-                <div className="module-score-badge yellow-badge">
+                <div className="module-score-badge" style={{ backgroundColor: `${moduleColor}33`, borderColor: moduleColor, color: moduleColor }}>
                   Score: {(moduleScores[module.id] || 0).toFixed(1)}/
                   {module.questions.length * 10}
                 </div>
               </div>
 
               {module.questions.map((question) => (
-                <div key={question.id} className="question-item">
+                <div key={question.id} className="question-item" style={{ borderLeftColor: moduleColor }}>
                   <label className="question-label">{question.question}</label>
                   
                   {question.formula && (
@@ -175,8 +185,8 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                   )}
 
                   {question.scoringRules && (
-                    <div className="scoring-hints yellow-hints">
-                      <strong>Scoring Guide:</strong>
+                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}22`, borderLeftColor: moduleColor }}>
+                      <strong style={{ color: moduleColor }}>Scoring Guide:</strong>
                       {question.scoringRules.map((rule, idx) => (
                         <div key={idx} className="scoring-rule">
                           • {rule.score} pts: {rule.description}
@@ -187,10 +197,11 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
-          ))}
+          )
+          })}
         </div>
 
-        <div className="visualization-panel yellow-panel">
+        <div className="visualization-panel">
           <h3>Module Performance</h3>
           <CloverVisualization
             modules={yellowSocietyModules.map((m, idx) => ({
@@ -199,12 +210,11 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
               score: moduleScores[m.id] || 0,
               maxScore: m.questions.length * 10
             }))}
-            color="#eab308"
           />
-          <div className="total-score-display yellow-score">
+          <div className="total-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
             <div className="score-label">Total Score</div>
-            <div className="score-value">
-              {Object.values(moduleScores).reduce((sum, s) => sum + s, 0).toFixed(1)} / 100
+            <div className="score-value" style={{ color: scoreColor }}>
+              {totalScore.toFixed(1)} / {maxTotalScore}
             </div>
           </div>
         </div>

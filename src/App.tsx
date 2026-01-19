@@ -6,6 +6,8 @@ import QuestionPageYellow from './components/QuestionPageYellow'
 import QuestionPageCyan from './components/QuestionPageCyan'
 import QuestionPageOrange from './components/QuestionPageOrange'
 import QuestionPageViolet from './components/QuestionPageViolet'
+import QuestionPageGreen from './components/QuestionPageGreen'
+import QuestionPageBlue from './components/QuestionPageBlue'
 import CoverPage from './components/CoverPage'
 import VisualizationPage from './components/VisualizationPage'
 import { DimensionProvider, useDimension } from './context/DimensionContext'
@@ -182,6 +184,12 @@ function AppContent() {
   }
 
   if (currentPage.type === 'dimension' && currentPage.dimensionId) {
+    if (currentPage.dimensionId === 'green-ecology') {
+      return <QuestionPageGreen onClose={handleCloseQuestion} />
+    }
+    if (currentPage.dimensionId === 'blue-practicality') {
+      return <QuestionPageBlue onClose={handleCloseQuestion} />
+    }
     if (currentPage.dimensionId === 'gray-industry') {
       return <QuestionPage onClose={handleCloseQuestion} />
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { grayIndustryModules } from '../data/grayIndustryQuestions'
 import { useDimension } from '../context/DimensionContext'
+import { getScoreColor } from '../utils/colorUtils'
 import CloverVisualization from './CloverVisualization'
 import './QuestionPage.css'
 
@@ -62,10 +63,14 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
     }
   }
 
+  const totalScore = Object.values(moduleScores).reduce((sum, s) => sum + s, 0)
+  const maxTotalScore = grayIndustryModules.reduce((sum, m) => sum + m.questions.length * 10, 0)
+  const scoreColor = getScoreColor(totalScore, maxTotalScore)
+
   return (
     <div className="question-page">
       <div className="question-header">
-        <button className="back-button" onClick={onClose}>
+        <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
         <h2>Gray Industry - Efficiency Engineer</h2>
@@ -76,19 +81,23 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
 
       <div className="question-content">
         <div className="questions-panel">
-          {grayIndustryModules.map((module, moduleIndex) => (
+          {grayIndustryModules.map((module, moduleIndex) => {
+            const moduleScore = moduleScores[module.id] || 0
+            const moduleMaxScore = module.questions.length * 10
+            const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
+            
+            return (
             <div key={module.id} className="module-section">
               <div className="module-header">
-                <h3>Module {moduleIndex + 1}: {module.name}</h3>
+                <h3 style={{ color: moduleColor }}>Module {moduleIndex + 1}: {module.name}</h3>
                 <p className="module-focus">Focus: {module.focus}</p>
-                <div className="module-score-badge">
-                  Score: {(moduleScores[module.id] || 0).toFixed(1)}/
-                  {module.questions.length * 10}
+                <div className="module-score-badge" style={{ backgroundColor: `${moduleColor}33`, borderColor: moduleColor, color: moduleColor }}>
+                  Score: {moduleScore.toFixed(1)}/{moduleMaxScore}
                 </div>
               </div>
 
               {module.questions.map((question) => (
-                <div key={question.id} className="question-item">
+                <div key={question.id} className="question-item" style={{ borderLeftColor: moduleColor }}>
                   <label className="question-label">{question.question}</label>
                   
                   {question.formula && (
@@ -142,7 +151,8 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
-          ))}
+          )
+          })}
         </div>
 
         <div className="visualization-panel">
@@ -155,10 +165,10 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
               maxScore: m.questions.length * 10
             }))}
           />
-          <div className="total-score-display">
+          <div className="total-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
             <div className="score-label">Total Score</div>
-            <div className="score-value">
-              {Object.values(moduleScores).reduce((sum, s) => sum + s, 0).toFixed(1)} / 100
+            <div className="score-value" style={{ color: scoreColor }}>
+              {totalScore.toFixed(1)} / {maxTotalScore}
             </div>
           </div>
         </div>

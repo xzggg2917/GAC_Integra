@@ -1,18 +1,20 @@
 import React, { useState } from 'react'
-import { violetInnovationModules } from '../data/violetInnovationQuestions'
+import { greenEcologyModules } from '../data/greenEcologyQuestions'
 import { useDimension } from '../context/DimensionContext'
-import CloverVisualization from './CloverVisualization'
 import { getScoreColor } from '../utils/colorUtils'
+import CloverVisualization from './CloverVisualization'
+import MultiSelectDropdown from './MultiSelectDropdown'
 import './QuestionPage.css'
 
-interface QuestionPageVioletProps {
+interface QuestionPageGreenProps {
   onClose: () => void
 }
 
-const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
+const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
   const { setScore, saveAnswers, getAnswers } = useDimension()
   const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('violet-innovation')
+    const savedAnswers = getAnswers('green-ecology')
+    // Parse JSON strings back to arrays for checkbox questions
     const parsedAnswers: { [key: string]: string | string[] } = {}
     Object.entries(savedAnswers).forEach(([key, val]) => {
       try {
@@ -26,12 +28,8 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
   })
   const [moduleScores, setModuleScores] = useState<{ [key: string]: number }>({})
 
-  const maxTotalScore = violetInnovationModules.reduce((sum, module) => sum + module.questions.length * 10, 0)
-  const totalScore = Object.values(moduleScores).reduce((sum, score) => sum + score, 0)
-  const scoreColor = getScoreColor(totalScore, maxTotalScore)
-
   const calculateQuestionScore = (questionId: string, answer: string | string[]): number => {
-    const question = violetInnovationModules
+    const question = greenEcologyModules
       .flatMap(m => m.questions)
       .find(q => q.id === questionId)
 
@@ -40,6 +38,15 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
     if (question.type === 'select') {
       const option = question.options?.find(opt => opt.value === answer)
       return option?.score || 0
+    }
+
+    if (question.type === 'checkbox' && Array.isArray(answer)) {
+      const totalDeduction = answer.reduce((sum, val) => {
+        const option = question.options?.find(opt => opt.value === val)
+        return sum + (option?.score || 0)
+      }, 0)
+      const score = 100 - totalDeduction
+      return Math.max(0, Math.min(10, score / 10))
     }
 
     if (question.type === 'input' && question.scoringRules) {
@@ -61,25 +68,30 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
   const handleAnswerChange = (questionId: string, moduleId: string, value: string | string[]) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
+    // Convert array values to JSON string for storage
     const storageAnswers: { [key: string]: string } = {}
     Object.entries(newAnswers).forEach(([key, val]) => {
       storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
     })
-    saveAnswers('violet-innovation', storageAnswers)
+    saveAnswers('green-ecology', storageAnswers)
 
-    const module = violetInnovationModules.find(m => m.id === moduleId)
+    const module = greenEcologyModules.find(m => m.id === moduleId)
     if (module) {
       const moduleQuestionScores = module.questions.map(q => 
-        calculateQuestionScore(q.id, newAnswers[q.id] || '')
+        calculateQuestionScore(q.id, newAnswers[q.id] || (q.type === 'checkbox' ? [] : ''))
       )
       const totalScore = moduleQuestionScores.reduce((sum, score) => sum + score, 0)
       const newModuleScores = { ...moduleScores, [moduleId]: totalScore }
       setModuleScores(newModuleScores)
 
       const totalDimensionScore = Object.values(newModuleScores).reduce((sum, score) => sum + score, 0)
-      setScore('violet-innovation', totalDimensionScore)
+      setScore('green-ecology', totalDimensionScore)
     }
   }
+
+  const totalScore = Object.values(moduleScores).reduce((sum, s) => sum + s, 0)
+  const maxTotalScore = greenEcologyModules.reduce((sum, m) => sum + m.questions.length * 10, 0)
+  const scoreColor = getScoreColor(totalScore, maxTotalScore)
 
   return (
     <div className="question-page">
@@ -87,17 +99,17 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Violet Innovation - Creative Designer</h2>
+        <h2>Green Ecology - Environmental Guardian</h2>
         <p className="dimension-description">
-          Focuses on whether methods introduce new insights or technological breakthroughs
+          Focuses on the direct environmental impact of analytical methods
         </p>
       </div>
 
       <div className="question-content">
         <div className="questions-panel">
-          {violetInnovationModules.map((module, moduleIndex) => {
-            const moduleMaxScore = module.questions.length * 10
+          {greenEcologyModules.map((module, moduleIndex) => {
             const moduleScore = moduleScores[module.id] || 0
+            const moduleMaxScore = module.questions.length * 10
             const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
             
             return (
@@ -112,16 +124,16 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
               </div>
 
               {module.questions.map((question) => (
-                <div key={question.id} className="question-item" style={{ borderColor: `${moduleColor}33` }}>
+                <div key={question.id} className="question-item" style={{ borderLeftColor: moduleColor }}>
                   <label className="question-label">{question.question}</label>
                   
                   {question.formula && (
-                    <div className="question-formula" style={{ backgroundColor: `${moduleColor}15`, borderColor: `${moduleColor}33` }}>
+                    <div className="question-formula green-formula">
                       Formula: {question.formula}
                     </div>
                   )}
 
-                  {question.reference && question.reference.url !== '#' && (
+                  {question.reference && (
                     <div className="question-reference">
                       <a href={question.reference.url} target="_blank" rel="noopener noreferrer">
                         🔗 {question.reference.name}
@@ -157,18 +169,27 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
                       <option value="">-- Select an option --</option>
                       {question.options?.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label}
+                          {option.label} ({option.score} points)
                         </option>
                       ))}
                     </select>
                   )}
 
+                  {question.type === 'checkbox' && (
+                    <MultiSelectDropdown
+                      options={question.options || []}
+                      selectedValues={(answers[question.id] as string[]) || []}
+                      onChange={(values) => handleAnswerChange(question.id, module.id, values)}
+                      placeholder="-- Select conditions (multiple) --"
+                    />
+                  )}
+
                   {question.scoringRules && (
-                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}15`, borderColor: `${moduleColor}33` }}>
-                      <strong>Scoring Guide:</strong>
+                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}22`, borderLeftColor: moduleColor }}>
+                      <strong style={{ color: moduleColor }}>Scoring Guide:</strong>
                       {question.scoringRules.map((rule, idx) => (
                         <div key={idx} className="scoring-rule">
-                          • {rule.description}
+                          • {rule.score} pts: {rule.description}
                         </div>
                       ))}
                     </div>
@@ -176,14 +197,13 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
-          )
-          })}
+          )})}
         </div>
 
         <div className="visualization-panel">
           <h3>Module Performance</h3>
           <CloverVisualization
-            modules={violetInnovationModules.map((m, idx) => ({
+            modules={greenEcologyModules.map((m, idx) => ({
               id: m.id,
               name: `Module ${idx + 1}`,
               score: moduleScores[m.id] || 0,
@@ -202,4 +222,4 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageViolet
+export default QuestionPageGreen

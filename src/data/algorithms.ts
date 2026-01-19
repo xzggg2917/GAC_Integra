@@ -11,7 +11,7 @@ export interface Dimension {
 export const dimensions: Dimension[] = [
   { 
     id: 'green-ecology', 
-    name: 'Green Ecology', 
+    name: 'Ecology', 
     fullName: 'Environmental Guardian',
     description: 'Focuses on the direct environmental impact of analytical methods, evaluating the entire process from reagent selection to waste disposal. Emphasizes low toxicity, low energy consumption, and minimal waste generation (GAC 12 principles).',
     role: 'Environmental Guardian',
@@ -20,7 +20,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'blue-practicality', 
-    name: 'Blue Practicality', 
+    name: 'Practicality', 
     fullName: 'Laboratory Steward',
     description: 'Focuses on whether methods are practical and affordable in routine laboratories. Determines if a method can be widely applied or remains confined to papers. Emphasizes cost-effectiveness, high throughput, and equipment accessibility (WAC practicality).',
     role: 'Laboratory Steward',
@@ -29,7 +29,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'red-performance', 
-    name: 'Red Performance', 
+    name: 'Performance', 
     fullName: 'Data Quality Gatekeeper',
     description: 'Focuses on the quality of analytical results. No matter how green a method is, it is meaningless if measurements are inaccurate. This represents traditional analytical chemistry validation metrics: accuracy, precision, and sensitivity.',
     role: 'Data Quality Gatekeeper',
@@ -38,7 +38,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'violet-innovation', 
-    name: 'Violet Innovation', 
+    name: 'Innovation', 
     fullName: 'Creative Designer',
     description: 'Focuses on whether methods introduce new insights or technological breakthroughs. Encourages breaking from traditional frameworks and rewards innovative designs with novelty, clever thinking, and technical advances.',
     role: 'Creative Designer',
@@ -47,7 +47,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'gray-industry', 
-    name: 'Gray Industry', 
+    name: 'Industry', 
     fullName: 'Efficiency Engineer',
     description: 'Focuses on efficiency from laboratory to industrial production scale. Emphasizes input-output ratio, producing more effective products with minimal resources. Covers process efficiency, waste reduction, and production scale control.',
     role: 'Efficiency Engineer',
@@ -56,7 +56,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'yellow-society', 
-    name: 'Yellow Society', 
+    name: 'Society', 
     fullName: 'Safety Guardian',
     description: 'Focuses on human safety, evaluating whether operators face risks of explosion, poisoning, or carcinogenic exposure during experiments. Emphasizes operator safety, occupational health risks, and social responsibility.',
     role: 'Safety Guardian',
@@ -65,7 +65,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'cyan-data', 
-    name: 'Cyan Data', 
+    name: 'Data', 
     fullName: 'Digital Navigator',
     description: 'Focuses on data reliability and compliance in the digital era. Ensures data integrity, traceability, and regulatory compliance (e.g., FDA requirements). Emphasizes ALCOA+ principles, digitalization level, and regulatory adherence.',
     role: 'Digital Navigator',
@@ -74,7 +74,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'orange-circular', 
-    name: 'Orange Circular', 
+    name: 'Circular', 
     fullName: 'Resource Regenerator',
     description: 'Focuses on the origin and destination of materials. Evaluates not only environmental protection but also whether resources come from renewable bio-based sources and can ultimately return to nature. Emphasizes biodegradability, renewable resources, and circular economy.',
     role: 'Resource Regenerator',
@@ -83,7 +83,7 @@ export const dimensions: Dimension[] = [
   },
   { 
     id: 'white-completeness', 
-    name: 'White Completeness', 
+    name: 'Completeness', 
     fullName: 'Gap Filler',
     description: 'Fills gaps in the evaluation framework to ensure comprehensive assessment. Addresses aspects not covered by other dimensions, making the overall evaluation more holistic and complete.',
     role: 'Gap Filler',

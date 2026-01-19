@@ -2,6 +2,9 @@ import React, { useState, useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { useDimension } from '../context/DimensionContext'
 import { dimensions } from '../data/algorithms'
+import { getScoreColor } from '../utils/colorUtils'
+import { greenEcologyModules } from '../data/greenEcologyQuestions'
+import { bluePracticalityModules } from '../data/bluePracticalityQuestions'
 import { grayIndustryModules } from '../data/grayIndustryQuestions'
 import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
 import { cyanDataQuestions } from '../data/cyanDataQuestions'
@@ -22,11 +25,55 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
   const chartData = useMemo(() => {
     // Get all question modules
     const allModules = {
+      'green-ecology': greenEcologyModules,
+      'blue-practicality': bluePracticalityModules,
       'gray-industry': grayIndustryModules,
       'yellow-society': yellowSocietyModules,
       'cyan-data': cyanDataQuestions,
       'orange-circular': orangeCircularModules,
       'violet-innovation': violetInnovationModules
+    }
+
+    // Helper function to calculate question score
+    const calculateQuestionScore = (question: any, answer: any): number => {
+      if (!answer) return 0
+
+      // Parse JSON strings for checkbox answers
+      let parsedAnswer = answer
+      if (typeof answer === 'string' && answer.startsWith('[')) {
+        try {
+          parsedAnswer = JSON.parse(answer)
+        } catch (e) {
+          parsedAnswer = answer
+        }
+      }
+
+      if (question.type === 'select') {
+        const selectedOption = question.options?.find((opt: any) => opt.value === parsedAnswer)
+        return selectedOption?.score || 0
+      }
+
+      if (question.type === 'input' && question.scoringRules) {
+        const numValue = parseFloat(parsedAnswer)
+        if (isNaN(numValue)) return 0
+
+        for (const rule of question.scoringRules) {
+          const minMatch = rule.min === undefined || numValue >= rule.min
+          const maxMatch = rule.max === undefined || numValue < rule.max
+          if (minMatch && maxMatch) {
+            return rule.score
+          }
+        }
+      }
+
+      if (question.type === 'checkbox' && Array.isArray(parsedAnswer)) {
+        return parsedAnswer.reduce((sum: number, val: string) => {
+          const opt = question.options?.find((o: any) => o.value === val)
+          return sum + (opt?.score || 0)
+        }, 0)
+      }
+
+      return 0
     }
 
     const children = selectedDimensions.map(dimId => {
@@ -38,30 +85,65 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       const modules = allModules[dimId as keyof typeof allModules]
       const allQuestions = (modules?.flatMap((m: any) => m.questions) || []) as any[]
       
-      // Create children for each question
-      const questionChildren = Object.entries(answers).map(([questionId, answer]) => {
-        const question = allQuestions.find((q: any) => q.id === questionId)
-        const answerValue = typeof answer === 'string' ? parseFloat(answer) || 0 : answer
+      // Create children for each question with actual score
+      const questionChildren = allQuestions.map((question: any, qIndex: number) => {
+        let answer = answers[question.id]
         
+        // Parse JSON strings (for checkbox answers)
+        if (typeof answer === 'string' && answer.startsWith('[')) {
+          try {
+            answer = JSON.parse(answer)
+          } catch (e) {
+            // Keep as string if parse fails
+          }
+        }
+        
+        const questionScore = calculateQuestionScore(question, answer)
+        
+        // Format answer for display
+        let answerDisplay = 'Not answered'
+        if (answer !== undefined && answer !== null && answer !== '') {
+          if (Array.isArray(answer)) {
+            answerDisplay = answer.length > 0 ? answer.join(', ') : 'Not answered'
+          } else {
+            answerDisplay = String(answer)
+          }
+        }
+
+        // Calculate color based on question score
+        const questionColor = getScoreColor(questionScore, 10)
+
+        // Handle both data structures: 'question' field (standard) and 'text' field (cyan-data)
+        const questionText = question.question || question.text || ''
+        const questionId = question.id ? question.id.toUpperCase() : `Q${qIndex + 1}`
+
         return {
-          name: `${questionId.toUpperCase()}`,
-          value: Math.max(answerValue, 1), // Ensure minimum visibility even for 0 scores
+          name: questionId,
+          value: 1, // Use fixed value for even distribution in sunburst
           itemStyle: {
-            color: dimension?.color
+            color: questionColor
           },
-          questionText: (question as any)?.question || '',
-          answerText: answer,
-          actualScore: answerValue // Store actual score for display
+          dimensionName: dimension?.name || dimId,
+          questionText: questionText,
+          answerText: answerDisplay,
+          actualScore: questionScore,
+          questionIndex: qIndex // Add index to prevent overlap
         }
       })
 
+      // Calculate color based on dimension total score
+      const maxDimensionScore = allQuestions.length * 10
+      const dimensionColor = getScoreColor(score, maxDimensionScore)
+
       return {
         name: dimension?.name || dimId,
-        value: score || 1,
+        value: questionChildren.length || 1, // Use number of questions for dimension size
         itemStyle: {
-          color: dimension?.color
+          color: dimensionColor
         },
-        children: questionChildren.length > 0 ? questionChildren : undefined
+        children: questionChildren.length > 0 ? questionChildren : undefined,
+        dimensionScore: score,
+        dimensionMaxScore: maxDimensionScore
       }
     })
 
@@ -82,21 +164,33 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       }
     },
     tooltip: {
+      confine: true,
+      backgroundColor: 'rgba(30, 41, 59, 0.95)',
+      borderColor: '#60a5fa',
+      borderWidth: 1,
+      textStyle: {
+        color: '#fff',
+        fontSize: 13
+      },
       formatter: (info: any) => {
-        const { value, treePathInfo, data } = info
-        const path = treePathInfo.map((item: any) => item.name).join(' > ')
+        const { data } = info
         
         // If it's a question node (has questionText)
         if (data.questionText) {
-          return `<div style="max-width: 400px;">
-            <strong>${path}</strong><br/>
-            <strong>Question:</strong> ${data.questionText}<br/>
-            <strong>Answer:</strong> ${data.answerText}<br/>
-            <strong>Score:</strong> ${value.toFixed(1)}
+          const displayScore = data.actualScore !== undefined ? data.actualScore : info.value
+          return `<div style="max-width: 400px; padding: 10px; line-height: 1.5; word-wrap: break-word; white-space: normal;">
+            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 8px; font-size: 14px;">${data.dimensionName} - ${data.name}</div>
+            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Question:</strong><br/>${data.questionText}</div>
+            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Answer:</strong> ${data.answerText}</div>
+            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 10</div>
           </div>`
         }
         
-        return `<strong>${path}</strong><br/>Score: ${value.toFixed(1)}`
+        // Dimension node
+        return `<div style="padding: 6px;">
+          <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">${data.name}</div>
+          <div style="color: #10b981; font-weight: bold;">Total Score: ${info.value.toFixed(1)}</div>
+        </div>`
       }
     },
     series: [
@@ -109,12 +203,16 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         label: {
           show: true,
           formatter: (params: any) => {
-            // Show question ID and actual score
-            const score = params.data.actualScore !== undefined ? params.data.actualScore : params.value
-            return `${params.name}\n${score.toFixed(1)}`
+            // Show dimension name and question ID for questions
+            if (params.data.dimensionName) {
+              const score = params.data.actualScore !== undefined ? params.data.actualScore : params.value
+              return `${params.data.dimensionName}\n${params.name}\n${score.toFixed(1)}`
+            }
+            // Show just name for dimensions
+            return params.name
           },
           color: '#fff',
-          fontSize: 14,
+          fontSize: 12,
           overflow: 'truncate'
         },
         breadcrumb: {
@@ -144,8 +242,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
   const sunburstOption = {
     title: {
       text: 'Dimension Score Distribution (Sunburst)',
-      left: 'center',
-      top: 20,
+      left: 40,
+      top: 30,
       textStyle: {
         color: '#fff',
         fontSize: 20
@@ -161,48 +259,81 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         fontSize: 13
       },
       formatter: (info: any) => {
-        const { treePathInfo, data } = info
-        const path = treePathInfo.map((item: any) => item.name).join(' > ')
+        const { data } = info
         
         // If it's a question node (has questionText)
         if (data.questionText) {
-          const displayScore = data.actualScore !== undefined ? data.actualScore : info.value
-          return `<div style="max-width: 500px; line-height: 1.6;">
-            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 8px;">${path}</div>
-            <div style="margin-bottom: 6px;"><strong>Question:</strong><br/>${data.questionText}</div>
-            <div style="margin-bottom: 6px;"><strong>Answer:</strong> ${data.answerText}</div>
-            <div style="font-size: 15px; font-weight: bold; color: #10b981;">Score: ${displayScore.toFixed(1)}</div>
+          const displayScore = data.actualScore !== undefined ? data.actualScore : 0
+          return `<div style="max-width: 400px; padding: 10px; line-height: 1.5; word-wrap: break-word; white-space: normal;">
+            <div style="font-weight: bold; color: #60a5fa; margin-bottom: 8px; font-size: 14px;">${data.dimensionName} - ${data.name}</div>
+            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Question:</strong><br/>${data.questionText}</div>
+            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Answer:</strong> ${data.answerText}</div>
+            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 10</div>
           </div>`
         }
         
-        return `<div style="font-weight: bold;">${path}</div><div>Score: ${info.value.toFixed(1)}</div>`
+        // Dimension node
+        const dimScore = data.dimensionScore !== undefined ? data.dimensionScore : info.value
+        const dimMaxScore = data.dimensionMaxScore || 100
+        return `<div style="padding: 8px;">
+          <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #60a5fa;">${data.name}</div>
+          <div style="color: #10b981; font-weight: bold; font-size: 14px;">Total Score: ${dimScore.toFixed(1)} / ${dimMaxScore}</div>
+          <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">Questions: ${data.children?.length || 0}</div>
+        </div>`
       }
     },
     series: [
       {
         type: 'sunburst',
-        radius: ['15%', '85%'],
+        center: ['50%', '52%'],
+        radius: ['15%', '88%'],
         animationDurationUpdate: 600,
         nodeClick: false,
+        sort: 'asc', // Sort to prevent overlap
         data: chartData.children,
         itemStyle: {
           borderWidth: 2,
           borderColor: 'rgba(255,255,255,.5)'
         },
-        label: {
-          show: true,
-          formatter: (params: any) => {
-            // Show question ID and actual score for inner rings
-            if (params.data.questionText) {
-              const score = params.data.actualScore !== undefined ? params.data.actualScore : params.value
-              return `${params.name}\n${score.toFixed(1)}`
+        emphasis: {
+          focus: 'ancestor' // Highlight parent when hovering child
+        },
+        levels: [
+          {
+            // Root level
+            r0: 0,
+            r: '15%',
+            label: {
+              show: false
             }
-            return params.name
           },
-          color: '#fff',
-          fontSize: 12,
-          overflow: 'truncate'
-        }
+          {
+            // Dimension level (inner ring)
+            r0: '15%',
+            r: '45%',
+            label: {
+              rotate: 'radial',
+              align: 'center',
+              fontSize: 15,
+              fontWeight: 'bold',
+              color: '#fff'
+            },
+            itemStyle: {
+              borderWidth: 3
+            }
+          },
+          {
+            // Question level (outer ring)
+            r0: '45%',
+            r: '90%',
+            label: {
+              show: false // Hide all labels on outer ring to avoid clutter
+            },
+            itemStyle: {
+              borderWidth: 1
+            }
+          }
+        ]
       }
     ]
   }
