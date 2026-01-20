@@ -340,10 +340,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
 
   const currentOption = viewMode === 'treemap' ? treemapOption : sunburstOption
 
-  // Calculate total score and percentage for water ball
+  // Calculate total score for water ball
   const totalScore = getTotalScore()
-  const maxTotalScore = selectedDimensions.length * 100
-  const scorePercentage = maxTotalScore > 0 ? (totalScore / maxTotalScore) * 100 : 0
   
   // Water ball level: use the displayed total score directly as water level (0-100 scale)
   // If total score is shown as 38.9, water should be at 38.9% height
@@ -359,13 +357,17 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       const answers = allAnswers[dimId] || {}
       const questionCount = Object.keys(answers).length
       const avgScore = questionCount > 0 ? score / questionCount : 0
+      
+      // Calculate score color based on actual score vs max (100 points per dimension)
+      const maxScore = 100
+      const scoreColor = getScoreColor(score, maxScore)
 
       return {
         dimension: dimension?.name || dimId,
         score: score.toFixed(1),
         avgScore: avgScore.toFixed(1),
         questionCount,
-        color: dimension?.color,
+        color: scoreColor,
         description: dimension?.description || ''
       }
     })

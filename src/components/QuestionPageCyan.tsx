@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { cyanDataQuestions } from '../data/cyanDataQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
-import CloverVisualization from './CloverVisualization'
 import './QuestionPage.css'
 
 interface QuestionPageCyanProps {
@@ -37,6 +36,22 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
     return 0
   }
 
+  // Initialize scores from saved answers on mount
+  useEffect(() => {
+    const initialModuleScores: { [key: string]: number } = {}
+    
+    cyanDataQuestions.forEach(module => {
+      const moduleQuestionScores = module.questions.map(q => 
+        calculateQuestionScore(q.id, answers[q.id] || '')
+      )
+      initialModuleScores[module.id] = moduleQuestionScores.reduce((sum, score) => sum + score, 0)
+    })
+    
+    setModuleScores(initialModuleScores)
+    const totalDimensionScore = Object.values(initialModuleScores).reduce((sum, score) => sum + score, 0)
+    setScore('cyan-data', totalDimensionScore)
+  }, []) // Run only once on mount
+
   const handleAnswerChange = (questionId: string, moduleId: string, value: string) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
@@ -65,46 +80,43 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
   return (
     <div className="question-page">
       <div className="question-header">
-        <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
-          ← Back to Dashboard
-        </button>
-        <h2>Digital Navigator</h2>
-        <p className="dimension-description">
-          Focus: ALCOA+ principle, data traceability and tampering prevention; Use mathematical methods to resolve chemical complexity, reducing reagent usage; FAIR principle (Findable, Accessible, Interoperable, Reusable), combating data silos.
-        </p>
+        <div className="question-header-left">
+          <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
+            ← Back to Dashboard
+          </button>
+          <div className="question-header-content">
+            <h2 style={{ marginBottom: '8px' }}>Digital Navigator</h2>
+            <p className="dimension-description">
+              Focus: ALCOA+ principle, data traceability and tampering prevention; Use mathematical methods to resolve chemical complexity, reducing reagent usage; FAIR principle (Findable, Accessible, Interoperable, Reusable), combating data silos.
+            </p>
+          </div>
+        </div>
+        <div className="header-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
+          <div className="score-label">Total Score</div>
+          <div className="score-value" style={{ color: scoreColor }}>
+            {totalScore.toFixed(1)} / {maxTotalScore}
+          </div>
+        </div>
       </div>
 
       <div className="question-content">
         <div className="questions-panel">
-          {cyanDataQuestions.map((module, moduleIndex) => {
-            const moduleScore = moduleScores[module.id] || 0
-            const moduleMaxScore = module.questions.length * 10
-            const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
-            
+          {cyanDataQuestions.flatMap(module => module.questions).map((question) => {
+            const module = cyanDataQuestions.find(m => m.questions.includes(question))!
             return (
-            <div key={module.id} className="module-section">
-              <div className="module-header">
-                <h3 style={{ color: moduleColor }}>Module {moduleIndex + 1}: {module.name}</h3>
-                <p className="module-focus">Focus: {module.description}</p>
-                <div className="module-score-badge" style={{ backgroundColor: `${moduleColor}33`, borderColor: moduleColor, color: moduleColor }}>
-                  Score: {moduleScore.toFixed(1)}/{moduleMaxScore}
-                </div>
-              </div>
-
-              {module.questions.map((question) => (
-                <div key={question.id} className="question-item" style={{ borderLeftColor: moduleColor }}>
+                <div key={question.id} className="question-item" style={{ borderLeftColor: scoreColor }}>
                   <label className="question-label">{question.text}</label>
 
                   {question.formula && (
-                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}22`, borderLeftColor: moduleColor }}>
-                      <strong style={{ color: moduleColor }}>Formula:</strong>
+                    <div className="scoring-hints" style={{ backgroundColor: `${scoreColor}22`, borderLeftColor: scoreColor }}>
+                      <strong style={{ color: scoreColor }}>Formula:</strong>
                       <div className="scoring-rule">{question.formula}</div>
                     </div>
                   )}
 
                   {question.note && (
-                    <div className="scoring-hints" style={{ backgroundColor: `${moduleColor}22`, borderLeftColor: moduleColor }}>
-                      <strong style={{ color: moduleColor }}>Note:</strong>
+                    <div className="scoring-hints" style={{ backgroundColor: `${scoreColor}22`, borderLeftColor: scoreColor }}>
+                      <strong style={{ color: scoreColor }}>Note:</strong>
                       <div className="scoring-rule">{question.note}</div>
                     </div>
                   )}
@@ -152,28 +164,8 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
-          )
+            )
           })}
-        </div>
-
-        <div className="visualization-panel">
-          <h3>Module Score Distribution</h3>
-          <CloverVisualization 
-            modules={cyanDataQuestions.map(module => ({
-              id: module.id,
-              name: module.name,
-              score: moduleScores[module.id] || 0,
-              maxScore: module.questions.length * 10
-            }))}
-          />
-          <div className="total-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
-            <div className="score-label">Total Score</div>
-            <div className="score-value" style={{ color: scoreColor }}>
-              {totalScore.toFixed(1)} / {maxTotalScore}
-            </div>
-          </div>
         </div>
       </div>
     </div>

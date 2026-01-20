@@ -10,7 +10,19 @@ interface DimensionGridProps {
 }
 
 const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisualize }) => {
-  const { getWeight, scores } = useDimension()
+  const { getWeight, scores, getTotalWeight } = useDimension()
+
+  const handleVisualize = () => {
+    const totalWeight = getTotalWeight()
+    
+    // Check if total weight is exactly 100%
+    if (Math.abs(totalWeight - 100) > 0.01) {
+      alert(`⚠️ Weight Validation Failed\n\nThe total weight of selected dimensions must equal 100%.\n\nCurrent total: ${totalWeight.toFixed(1)}%\n\nPlease adjust the weights in the "Custom Weights" section above.`)
+      return
+    }
+    
+    onVisualize()
+  }
 
   return (
     <div className="grid-container">
@@ -70,7 +82,7 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisua
       </div>
       
       <div className="visualization-button-container">
-        <button className="visualization-button" onClick={onVisualize}>
+        <button className="visualization-button" onClick={handleVisualize}>
           <span className="viz-icon">📊</span>
           <span className="viz-text">View Results Visualization</span>
           <span className="viz-arrow">→</span>
