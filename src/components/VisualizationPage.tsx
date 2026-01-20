@@ -340,6 +340,16 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
 
   const currentOption = viewMode === 'treemap' ? treemapOption : sunburstOption
 
+  // Calculate total score and percentage for water ball
+  const totalScore = getTotalScore()
+  const maxTotalScore = selectedDimensions.length * 100
+  const scorePercentage = maxTotalScore > 0 ? (totalScore / maxTotalScore) * 100 : 0
+  
+  // Water ball level: use the displayed total score directly as water level (0-100 scale)
+  // If total score is shown as 38.9, water should be at 38.9% height
+  const waterLevel = totalScore > 100 ? 100 : totalScore // Cap at 100 for display
+  const textColor = totalScore < 30 ? '#ef4444' : totalScore < 60 ? '#f59e0b' : '#10b981'
+
   // Generate text report
   const textReport = useMemo(() => {
     const totalScore = getTotalScore()
@@ -400,12 +410,74 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
 
       <div className="visualization-content">
         {!showTextReport ? (
-          <div className="chart-container">
+          <div className="chart-container" style={{ position: 'relative' }}>
             <ReactECharts
               option={currentOption}
               style={{ height: '600px', width: '100%' }}
               theme="dark"
             />
+            {viewMode === 'sunburst' && (
+              <div className="water-ball-container">
+                <svg className="water-ball" viewBox="0 0 200 200">
+                  <defs>
+                    <clipPath id="circle-clip">
+                      <circle cx="100" cy="100" r="100" />
+                    </clipPath>
+                    <linearGradient id="water-gradient" x1="0%" y1="100%" x2="0%" y2="0%">
+                      <stop offset="0%" stopColor={totalScore < 30 ? '#ef4444' : totalScore < 60 ? '#f59e0b' : '#10b981'} />
+                      <stop offset="100%" stopColor={totalScore < 30 ? '#dc2626' : totalScore < 60 ? '#d97706' : '#059669'} />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Background circle - matches sunburst center */}
+                  <circle cx="100" cy="100" r="100" fill="rgba(15, 23, 42, 0.98)" stroke="none" />
+                  
+                  {/* Water wave */}
+                  <g clipPath="url(#circle-clip)">
+                    <path
+                      d={`M 0,${200 - (waterLevel * 2)} Q 50,${200 - (waterLevel * 2) - 10} 100,${200 - (waterLevel * 2)} T 200,${200 - (waterLevel * 2)} V 200 H 0 Z`}
+                      fill="url(#water-gradient)"
+                      opacity="0.7"
+                    >
+                      <animate
+                        attributeName="d"
+                        dur="3s"
+                        repeatCount="indefinite"
+                        values={`M 0,${200 - (waterLevel * 2)} Q 50,${200 - (waterLevel * 2) - 10} 100,${200 - (waterLevel * 2)} T 200,${200 - (waterLevel * 2)} V 200 H 0 Z;
+                                M 0,${200 - (waterLevel * 2)} Q 50,${200 - (waterLevel * 2) + 10} 100,${200 - (waterLevel * 2)} T 200,${200 - (waterLevel * 2)} V 200 H 0 Z;
+                                M 0,${200 - (waterLevel * 2)} Q 50,${200 - (waterLevel * 2) - 10} 100,${200 - (waterLevel * 2)} T 200,${200 - (waterLevel * 2)} V 200 H 0 Z`}
+                      />
+                    </path>
+                    <path
+                      d={`M 0,${200 - (waterLevel * 2) + 5} Q 50,${200 - (waterLevel * 2) + 15} 100,${200 - (waterLevel * 2) + 5} T 200,${200 - (waterLevel * 2) + 5} V 200 H 0 Z`}
+                      fill="url(#water-gradient)"
+                      opacity="0.5"
+                    >
+                      <animate
+                        attributeName="d"
+                        dur="2.5s"
+                        repeatCount="indefinite"
+                        values={`M 0,${200 - (waterLevel * 2) + 5} Q 50,${200 - (waterLevel * 2) + 15} 100,${200 - (waterLevel * 2) + 5} T 200,${200 - (waterLevel * 2) + 5} V 200 H 0 Z;
+                                M 0,${200 - (waterLevel * 2) + 5} Q 50,${200 - (waterLevel * 2) - 5} 100,${200 - (waterLevel * 2) + 5} T 200,${200 - (waterLevel * 2) + 5} V 200 H 0 Z;
+                                M 0,${200 - (waterLevel * 2) + 5} Q 50,${200 - (waterLevel * 2) + 15} 100,${200 - (waterLevel * 2) + 5} T 200,${200 - (waterLevel * 2) + 5} V 200 H 0 Z`}
+                      />
+                    </path>
+                  </g>
+                  
+                  {/* Score text */}
+                  <text
+                    x="100"
+                    y="105"
+                    textAnchor="middle"
+                    fill={textColor}
+                    fontSize="42"
+                    fontWeight="bold"
+                  >
+                    {totalScore.toFixed(1)}
+                  </text>
+                </svg>
+              </div>
+            )}
             <div className="chart-hint">
               💡 Hover over blocks to see detailed scores. Block size represents score magnitude.
             </div>

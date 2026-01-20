@@ -20,7 +20,7 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisua
           const score = scores[dimension.id] || 0
           const maxScore = 100 // 每个维度满分100
           const cardColor = getScoreColor(score, maxScore)
-          const hasQuestions = ['green-ecology', 'blue-practicality', 'gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
+          const hasQuestions = ['green-ecology', 'blue-practicality', 'red-performance', 'white-completeness', 'gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
 
           return (
             <div 

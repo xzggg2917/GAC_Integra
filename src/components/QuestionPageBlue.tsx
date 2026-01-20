@@ -99,7 +99,7 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Blue Practicality - Laboratory Steward</h2>
+        <h2>Laboratory Steward</h2>
         <p className="dimension-description">
           Focuses on whether methods are practical and affordable in routine laboratories
         </p>

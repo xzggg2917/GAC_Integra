@@ -1,20 +1,19 @@
 import React, { useState } from 'react'
-import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
+import { redPerformanceModules } from '../data/redPerformanceQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
 import CloverVisualization from './CloverVisualization'
 import MultiSelectDropdown from './MultiSelectDropdown'
 import './QuestionPage.css'
 
-interface QuestionPageYellowProps {
+interface QuestionPageRedProps {
   onClose: () => void
 }
 
-const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
+const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
   const { setScore, saveAnswers, getAnswers } = useDimension()
   const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('yellow-society')
-    // Parse JSON strings back to arrays for checkbox questions
+    const savedAnswers = getAnswers('red-performance')
     const parsedAnswers: { [key: string]: string | string[] } = {}
     Object.entries(savedAnswers).forEach(([key, val]) => {
       try {
@@ -29,7 +28,7 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
   const [moduleScores, setModuleScores] = useState<{ [key: string]: number }>({})
 
   const calculateQuestionScore = (questionId: string, answer: string | string[]): number => {
-    const question = yellowSocietyModules
+    const question = redPerformanceModules
       .flatMap(m => m.questions)
       .find(q => q.id === questionId)
 
@@ -68,46 +67,45 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
   const handleAnswerChange = (questionId: string, moduleId: string, value: string | string[]) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
-    // Convert array values to JSON string for storage
     const storageAnswers: { [key: string]: string } = {}
     Object.entries(newAnswers).forEach(([key, val]) => {
       storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
     })
-    saveAnswers('yellow-society', storageAnswers)
+    saveAnswers('red-performance', storageAnswers)
 
-    const module = yellowSocietyModules.find(m => m.id === moduleId)
+    const module = redPerformanceModules.find(m => m.id === moduleId)
     if (module) {
       const moduleQuestionScores = module.questions.map(q => 
-        calculateQuestionScore(q.id, newAnswers[q.id] || (q.type === 'checkbox' ? [] : ''))
+        calculateQuestionScore(q.id, newAnswers[q.id] || '')
       )
-      const totalScore = moduleQuestionScores.reduce((sum, score) => sum + score, 0)
+      const totalScore = moduleQuestionScores.reduce((a, b) => a + b, 0)
       const newModuleScores = { ...moduleScores, [moduleId]: totalScore }
       setModuleScores(newModuleScores)
 
-      const totalDimensionScore = Object.values(newModuleScores).reduce((sum, score) => sum + score, 0)
-      setScore('yellow-society', totalDimensionScore)
+      const overallScore = Object.values(newModuleScores).reduce((a, b) => a + b, 0)
+      setScore('red-performance', overallScore)
     }
   }
 
-  const totalScore = Object.values(moduleScores).reduce((sum, s) => sum + s, 0)
-  const maxTotalScore = yellowSocietyModules.reduce((sum, m) => sum + m.questions.length * 10, 0)
+  const totalScore = Object.values(moduleScores).reduce((a, b) => a + b, 0)
+  const maxTotalScore = redPerformanceModules.reduce((sum, m) => sum + m.questions.length * 10, 0)
   const scoreColor = getScoreColor(totalScore, maxTotalScore)
 
   return (
     <div className="question-page">
       <div className="question-header">
-        <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
+        <button className="back-button" onClick={onClose}>
           ← Back to Dashboard
         </button>
-        <h2>Safety Guardian</h2>
+        <h2>Excellence Guarantor</h2>
         <p className="dimension-description">
-          Focuses on human safety and occupational health risks
+          Analytical accuracy, precision, and reliability assessment
         </p>
       </div>
 
       <div className="question-content">
         <div className="questions-panel">
-          {yellowSocietyModules.map((module, moduleIndex) => {
+          {redPerformanceModules.map((module, moduleIndex) => {
             const moduleScore = moduleScores[module.id] || 0
             const moduleMaxScore = module.questions.length * 10
             const moduleColor = getScoreColor(moduleScore, moduleMaxScore)
@@ -128,7 +126,7 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                   <label className="question-label">{question.question}</label>
                   
                   {question.formula && (
-                    <div className="question-formula yellow-formula">
+                    <div className="question-formula red-formula">
                       Formula: {question.formula}
                     </div>
                   )}
@@ -197,14 +195,13 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                 </div>
               ))}
             </div>
-          )
-          })}
+          )})}
         </div>
 
         <div className="visualization-panel">
           <h3>Module Performance</h3>
           <CloverVisualization
-            modules={yellowSocietyModules.map((m, idx) => ({
+            modules={redPerformanceModules.map((m, idx) => ({
               id: m.id,
               name: `Module ${idx + 1}`,
               score: moduleScores[m.id] || 0,
@@ -223,4 +220,4 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageYellow
+export default QuestionPageRed

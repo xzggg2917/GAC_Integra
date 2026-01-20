@@ -88,7 +88,7 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Orange Circular - Resource Regenerator</h2>
+        <h2>Resource Regenerator</h2>
         <p className="dimension-description">
           Focus: Recovery, reuse, and waste destination; Based on bio-based carbon from renewable materials; Low carbon and emissions throughout the life cycle
         </p>

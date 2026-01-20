@@ -8,6 +8,8 @@ import QuestionPageOrange from './components/QuestionPageOrange'
 import QuestionPageViolet from './components/QuestionPageViolet'
 import QuestionPageGreen from './components/QuestionPageGreen'
 import QuestionPageBlue from './components/QuestionPageBlue'
+import QuestionPageRed from './components/QuestionPageRed'
+import QuestionPageWhite from './components/QuestionPageWhite'
 import CoverPage from './components/CoverPage'
 import VisualizationPage from './components/VisualizationPage'
 import { DimensionProvider, useDimension } from './context/DimensionContext'
@@ -189,6 +191,12 @@ function AppContent() {
     }
     if (currentPage.dimensionId === 'blue-practicality') {
       return <QuestionPageBlue onClose={handleCloseQuestion} />
+    }
+    if (currentPage.dimensionId === 'red-performance') {
+      return <QuestionPageRed onClose={handleCloseQuestion} />
+    }
+    if (currentPage.dimensionId === 'white-completeness') {
+      return <QuestionPageWhite onClose={handleCloseQuestion} />
     }
     if (currentPage.dimensionId === 'gray-industry') {
       return <QuestionPage onClose={handleCloseQuestion} />

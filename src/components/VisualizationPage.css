@@ -246,3 +246,31 @@
   font-weight: 700;
   color: #60a5fa;
 }
+
+/* Water Ball in Sunburst Center */
+.water-ball-container {
+  position: absolute;
+  top: 332px;  /* Adjusted to move ball down more */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90px;  /* Smaller to fit inside the center circle */
+  height: 90px;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 50%;
+}
+
+.water-ball {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.water-ball circle {
+  transition: all 0.3s ease;
+}
+
+.water-ball text {
+  pointer-events: none;
+  user-select: none;
+}

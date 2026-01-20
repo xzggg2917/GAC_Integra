@@ -99,7 +99,7 @@ const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Green Ecology - Environmental Guardian</h2>
+        <h2>Environmental Guardian</h2>
         <p className="dimension-description">
           Focuses on the direct environmental impact of analytical methods
         </p>

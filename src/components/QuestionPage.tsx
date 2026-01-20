@@ -73,7 +73,7 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Gray Industry - Efficiency Engineer</h2>
+        <h2>Efficiency Engineer</h2>
         <p className="dimension-description">
           Focuses on efficiency from laboratory to industrial production scale
         </p>

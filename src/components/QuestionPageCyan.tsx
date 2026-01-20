@@ -68,7 +68,7 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Cyan Data - Digital Navigator</h2>
+        <h2>Digital Navigator</h2>
         <p className="dimension-description">
           Focus: ALCOA+ principle, data traceability and tampering prevention; Use mathematical methods to resolve chemical complexity, reducing reagent usage; FAIR principle (Findable, Accessible, Interoperable, Reusable), combating data silos.
         </p>

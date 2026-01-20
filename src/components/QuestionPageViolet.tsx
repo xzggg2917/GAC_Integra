@@ -87,7 +87,7 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
         <button className="back-button" onClick={onClose} style={{ borderColor: scoreColor, color: scoreColor }}>
           ← Back to Dashboard
         </button>
-        <h2>Violet Innovation - Creative Designer</h2>
+        <h2>Creative Designer</h2>
         <p className="dimension-description">
           Focuses on whether methods introduce new insights or technological breakthroughs
         </p>
