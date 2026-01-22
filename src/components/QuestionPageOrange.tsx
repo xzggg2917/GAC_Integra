@@ -193,13 +193,6 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
                 <div key={question.id} className="question-item" style={{ borderColor: `${scoreColor}33` }}>
                   <label className="question-label">{question.question}</label>
 
-                  {question.formula && (
-                    <div className="scoring-hints" style={{ backgroundColor: `${scoreColor}15`, borderColor: `${scoreColor}33` }}>
-                      <strong>Formula:</strong>
-                      <div className="scoring-rule">{question.formula}</div>
-                    </div>
-                  )}
-
                   {question.type === 'input' && (
                     <div className="input-group">
                       <input
@@ -268,10 +261,14 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
                   <div className="weight-input-group">
                     <input
                       type="number"
-                      value={weights[question.id]?.toFixed(1) || '0.0'}
+                      value={weights[question.id] || 0}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0
                         handleWeightChange(question.id, Math.max(0, Math.min(100, value)))
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        handleWeightChange(question.id, parseFloat(Math.max(0, Math.min(100, value)).toFixed(2)))
                       }}
                       className="weight-input"
                       min="0"

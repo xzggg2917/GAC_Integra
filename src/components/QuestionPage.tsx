@@ -116,7 +116,7 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
   const normalizeWeights = () => {
     const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
     if (currentTotal === 0) {
-      const avgWeight = 100 / allQuestions.length
+      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
         newWeights[q.id] = avgWeight
@@ -127,7 +127,7 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
       const factor = 100 / currentTotal
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
-        newWeights[q.id] = (weights[q.id] || 0) * factor
+        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
       })
       setWeights(newWeights)
       setQuestionWeights('gray-industry', newWeights)
@@ -177,10 +177,6 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
             return (
               <div key={question.id} className="question-item" style={{ borderLeftColor: scoreColor }}>
                 <label className="question-label">{question.question}</label>
-                  
-                  {question.formula && (
-                    <div className="question-formula">Formula: {question.formula}</div>
-                  )}
 
                   {question.type === 'input' && (
                     <div className="input-group">
@@ -261,10 +257,14 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
                   <div className="weight-input-group">
                     <input
                       type="number"
-                      value={weights[question.id]?.toFixed(1) || '0.0'}
+                      value={weights[question.id] || 0}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0
                         handleWeightChange(question.id, Math.max(0, Math.min(100, value)))
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        handleWeightChange(question.id, parseFloat(Math.max(0, Math.min(100, value)).toFixed(2)))
                       }}
                       className="weight-input"
                       min="0"

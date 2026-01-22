@@ -50,6 +50,54 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
 
     if (!question) return 0
 
+    // Handle multi-input questions (Q3, Q4, Q5)
+    if (question.type === 'multi-input' && typeof answer === 'string') {
+      try {
+        const data = JSON.parse(answer || '{}')
+        
+        // Q3: Economic Burden Index (EBI)
+        if (questionId === 'q3') {
+          const cost = parseFloat(data.cost || '0')
+          const time = parseFloat(data.time || '0')
+          // 只有当有有效输入时才计算
+          if (data.cost === '' || data.cost === undefined) return 0
+          if (!isNaN(cost) && !isNaN(time) && cost >= 0 && time >= 0) {
+            const numerator = (cost + 20 * time) / 15
+            return 100 / (1 + Math.pow(numerator, 2.5))
+          }
+        }
+        
+        // Q4: Time-Output Efficiency (TOE)
+        if (questionId === 'q4') {
+          const runtime = parseFloat(data.runtime || '0')
+          const analytes = parseFloat(data.analytes || '1')
+          // 只有当有有效输入时才计算
+          if (data.runtime === '' || data.runtime === undefined) return 0
+          if (!isNaN(runtime) && !isNaN(analytes) && runtime >= 0 && analytes > 0) {
+            const ratio = runtime / analytes
+            return 100 / (1 + 0.01 * Math.pow(ratio, 4.5))
+          }
+        }
+        
+        // Q5: Resource Productivity Ratio (RPR)
+        if (questionId === 'q5') {
+          const analytes = parseFloat(data.analytes || '1')
+          const volume = parseFloat(data.volume || '0')
+          // 只有当有有效输入时才计算
+          if (data.analytes === '' || data.analytes === undefined) return 0
+          if (!isNaN(analytes) && !isNaN(volume) && analytes > 0 && volume >= 0) {
+            const nSquared = Math.pow(analytes, 2)
+            const denominator = nSquared + Math.log(1 + volume)
+            return 100 * nSquared / denominator
+          }
+        }
+        
+        return 0
+      } catch {
+        return 0
+      }
+    }
+
     if (question.type === 'select') {
       const option = question.options?.find(opt => opt.value === answer)
       return option?.score || 0
@@ -144,7 +192,7 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
   const normalizeWeights = () => {
     const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
     if (currentTotal === 0) {
-      const avgWeight = 100 / allQuestions.length
+      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
         newWeights[q.id] = avgWeight
@@ -155,7 +203,7 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
       const factor = 100 / currentTotal
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
-        newWeights[q.id] = (weights[q.id] || 0) * factor
+        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
       })
       setWeights(newWeights)
       setQuestionWeights('blue-practicality', newWeights)
@@ -174,7 +222,7 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
     return sum + (score * weight / 100)
   }, 0)
   
-  const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(1))
+  const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(2))
   const scoreColor = getScoreColor(totalWeightedScore, 100)
 
   return (
@@ -205,12 +253,6 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
             return (
               <div key={question.id} className="question-item" style={{ borderLeftColor: scoreColor }}>
                 <label className="question-label">{question.question}</label>
-                  
-                  {question.formula && (
-                    <div className="question-formula blue-formula">
-                      Formula: {question.formula}
-                    </div>
-                  )}
 
                   {question.type === 'input' && (
                     <div className="input-group">
@@ -255,6 +297,55 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
                     />
                   )}
 
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <div className="multi-input-container">
+                      {question.multiInputFields.map((field) => {
+                        const currentValue = (() => {
+                          try {
+                            const data = JSON.parse(answers[question.id] as string || '{}')
+                            return data[field.name] || ''
+                          } catch {
+                            return ''
+                          }
+                        })()
+
+                        return (
+                          <div key={field.name} className="input-group">
+                            <label className="input-label">{field.label}</label>
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                onChange={(e) => {
+                                  try {
+                                    const data = JSON.parse(answers[question.id] as string || '{}')
+                                    data[field.name] = e.target.value
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  } catch {
+                                    const data = { [field.name]: e.target.value }
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  }
+                                }}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                  }
+                                }}
+                                className="question-input"
+                                placeholder={field.placeholder}
+                                min={field.min}
+                                max={field.max}
+                                step="any"
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
                 </div>
             )
           })}
@@ -290,10 +381,14 @@ const QuestionPageBlue: React.FC<QuestionPageBlueProps> = ({ onClose }) => {
                   <div className="weight-input-group">
                     <input
                       type="number"
-                      value={weights[question.id]?.toFixed(1) || '0.0'}
+                      value={weights[question.id] || 0}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0
                         handleWeightChange(question.id, Math.max(0, Math.min(100, value)))
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        handleWeightChange(question.id, parseFloat(Math.max(0, Math.min(100, value)).toFixed(2)))
                       }}
                       className="weight-input"
                       min="0"

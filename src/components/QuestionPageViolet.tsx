@@ -47,7 +47,7 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
     return sum + (score * weight / 100)
   }, 0)
   
-  const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(1))
+  const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(2))
   const scoreColor = getScoreColor(totalWeightedScore, 100)
 
   const calculateQuestionScore = (questionId: string, answer: string | string[]): number => {
@@ -72,6 +72,40 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
         if (minMatch && maxMatch) {
           return rule.score
         }
+      }
+    }
+
+    // Multi-input questions: Q3, Q4, Q5
+    if (question.type === 'multi-input' && Array.isArray(answer)) {
+      const values = answer.map(v => parseFloat(v)).filter(v => !isNaN(v))
+      
+      // Q3: Methodological Synergy Integration Degree
+      // Formula: Score = 100 × [1 - exp(-0.1 × V_t² × √(J_p + 1))]
+      if (questionId === 'q3' && values.length === 2) {
+        const vt = values[0] // V_t: Number of specialized modules
+        const jp = values[1] // J_p: Number of coupling points
+        const score = 100 * (1 - Math.exp(-0.1 * Math.pow(vt, 2) * Math.sqrt(jp + 1)))
+        return Math.max(0, Math.min(100, score))
+      }
+
+      // Q4: Structural Advancement and Nonlinear Logic Index
+      // Formula: Score = 100 × (L_s × D_sa)² / ((L_s × D_sa)² + 1.5)
+      if (questionId === 'q4' && values.length === 2) {
+        const ls = values[0]  // L_s: Nonlinear logical steps count
+        const dsa = values[1] // D_sa: Customization degree coefficient (0-1)
+        const product = ls * dsa
+        const score = 100 * Math.pow(product, 2) / (Math.pow(product, 2) + 1.5)
+        return Math.max(0, Math.min(100, score))
+      }
+
+      // Q5: Theoretical Extension and Knowledge Acquisition Efficiency
+      // Formula: Score = 100 × sin(π/2 × (N_r × M_a)/(N_r × M_a + 5))
+      if (questionId === 'q5' && values.length === 2) {
+        const nr = values[0] // N_r: Interdisciplinary reference resource count
+        const ma = values[1] // M_a: Methodological universality transfer capability
+        const product = nr * ma
+        const score = 100 * Math.sin(Math.PI / 2 * product / (product + 5))
+        return Math.max(0, Math.min(100, score))
       }
     }
 
@@ -144,7 +178,7 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
       const avgWeight = 100 / allQuestions.length
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
+        newWeights[q.id] = parseFloat(avgWeight.toFixed(2))
       })
       setWeights(newWeights)
       setQuestionWeights('violet-innovation', newWeights)
@@ -152,7 +186,7 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
       const factor = 100 / currentTotal
       const newWeights: { [key: string]: number } = {}
       allQuestions.forEach(q => {
-        newWeights[q.id] = (weights[q.id] || 0) * factor
+        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
       })
       setWeights(newWeights)
       setQuestionWeights('violet-innovation', newWeights)
@@ -193,13 +227,6 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
             return (
                 <div key={question.id} className="question-item" style={{ borderColor: `${scoreColor}33` }}>
                   <label className="question-label">{question.question}</label>
-                  
-                  {question.formula && (
-                    <div className="question-formula" style={{ backgroundColor: `${scoreColor}15`, borderColor: `${scoreColor}33` }}>
-                      Formula: {question.formula}
-                    </div>
-                  )}
-
 
                   {question.type === 'input' && (
                     <div className="input-group">
@@ -233,6 +260,42 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
                         </option>
                       ))}
                     </select>
+                  )}
+
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <div className="multi-input-container">
+                      {question.multiInputFields.map((field, fieldIndex) => {
+                        const currentAnswers = Array.isArray(answers[question.id]) ? answers[question.id] as string[] : []
+                        return (
+                          <div key={fieldIndex} className="input-group">
+                            <label className="multi-input-label">{field.label}</label>
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                value={currentAnswers[fieldIndex] || ''}
+                                onChange={(e) => {
+                                  const newAnswers = [...currentAnswers]
+                                  newAnswers[fieldIndex] = e.target.value
+                                  handleAnswerChange(question.id, newAnswers)
+                                }}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                  }
+                                }}
+                                className="question-input"
+                                placeholder={field.placeholder}
+                                min={field.min}
+                                max={field.max}
+                                step="any"
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
                 </div>
             )
@@ -269,10 +332,14 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
                   <div className="weight-input-group">
                     <input
                       type="number"
-                      value={weights[question.id]?.toFixed(1) || '0.0'}
+                      value={weights[question.id] || 0}
                       onChange={(e) => {
                         const value = parseFloat(e.target.value) || 0
                         handleWeightChange(question.id, Math.max(0, Math.min(100, value)))
+                      }}
+                      onBlur={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        handleWeightChange(question.id, parseFloat(Math.max(0, Math.min(100, value)).toFixed(2)))
                       }}
                       className="weight-input"
                       min="0"
