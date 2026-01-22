@@ -9,9 +9,25 @@ interface QuestionPageCyanProps {
 }
 
 const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers } = useDimension()
+  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
   const [answers, setAnswers] = useState<Record<string, string>>(() => getAnswers('cyan-data'))
-  const [moduleScores, setModuleScores] = useState<Record<string, number>>({})
+  
+  // 初始化权重 - 如果没有保存的权重，平均分配
+  const allQuestions = cyanDataQuestions.flatMap(m => m.questions)
+  const [weights, setWeights] = useState<{ [key: string]: number }>(() => {
+    const savedWeights = getQuestionWeights('cyan-data')
+    if (Object.keys(savedWeights).length === 0) {
+      const defaultWeight = 100 / allQuestions.length
+      const initial: { [key: string]: number } = {}
+      allQuestions.forEach(q => {
+        initial[q.id] = defaultWeight
+      })
+      return initial
+    }
+    return savedWeights
+  })
+  
+  const [questionScores, setQuestionScores] = useState<{ [key: string]: number }>({})
 
   const calculateQuestionScore = (questionId: string, value: string): number => {
     if (!value) return 0
@@ -38,44 +54,95 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
 
   // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialModuleScores: { [key: string]: number } = {}
+    const initialScores: { [key: string]: number } = {}
     
-    cyanDataQuestions.forEach(module => {
-      const moduleQuestionScores = module.questions.map(q => 
-        calculateQuestionScore(q.id, answers[q.id] || '')
-      )
-      initialModuleScores[module.id] = moduleQuestionScores.reduce((sum, score) => sum + score, 0)
+    allQuestions.forEach(question => {
+      const rawScore = calculateQuestionScore(question.id, answers[question.id] || '')
+      initialScores[question.id] = rawScore
     })
     
-    setModuleScores(initialModuleScores)
-    const totalDimensionScore = Object.values(initialModuleScores).reduce((sum, score) => sum + score, 0)
-    setScore('cyan-data', totalDimensionScore)
+    setQuestionScores(initialScores)
+    
+    // 计算加权总分
+    const totalWeightedScore = allQuestions.reduce((sum, q) => {
+      const rawScore = initialScores[q.id] || 0
+      const weight = weights[q.id] || 0
+      return sum + (rawScore * weight / 100)
+    }, 0)
+    
+    setScore('cyan-data', totalWeightedScore)
   }, []) // Run only once on mount
 
-  const handleAnswerChange = (questionId: string, moduleId: string, value: string) => {
+  const handleAnswerChange = (questionId: string, value: string) => {
     const newAnswers = { ...answers, [questionId]: value }
     setAnswers(newAnswers)
     saveAnswers('cyan-data', newAnswers)
 
-    // Calculate module score
-    const module = cyanDataQuestions.find(m => m.id === moduleId)
-    if (module) {
-      const moduleQuestionScores = module.questions.map(q => 
-        calculateQuestionScore(q.id, newAnswers[q.id] || '')
-      )
-      const totalScore = moduleQuestionScores.reduce((sum, score) => sum + score, 0)
-      const newModuleScores = { ...moduleScores, [moduleId]: totalScore }
-      setModuleScores(newModuleScores)
+    // 计算新的分数
+    const rawScore = calculateQuestionScore(questionId, value)
+    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
+    setQuestionScores(newQuestionScores)
 
-      // Calculate total score for Cyan Data dimension
-      const totalDimensionScore = Object.values(newModuleScores).reduce((sum, score) => sum + score, 0)
-      setScore('cyan-data', totalDimensionScore)
+    // 计算加权总分
+    const totalWeightedScore = allQuestions.reduce((sum, q) => {
+      const score = newQuestionScores[q.id] || 0
+      const weight = weights[q.id] || 0
+      return sum + (score * weight / 100)
+    }, 0)
+    
+    setScore('cyan-data', totalWeightedScore)
+  }
+
+  const handleWeightChange = (questionId: string, newWeight: number) => {
+    const newWeights = { ...weights, [questionId]: newWeight }
+    setWeights(newWeights)
+    setQuestionWeights('cyan-data', newWeights)
+    
+    // 重新计算加权总分
+    const totalWeightedScore = allQuestions.reduce((sum, q) => {
+      const score = questionScores[q.id] || 0
+      const weight = newWeights[q.id] || 0
+      return sum + (score * weight / 100)
+    }, 0)
+    
+    setScore('cyan-data', totalWeightedScore)
+  }
+
+  const normalizeWeights = () => {
+    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
+    if (currentTotal === 0) {
+      const avgWeight = 100 / allQuestions.length
+      const newWeights: { [key: string]: number } = {}
+      allQuestions.forEach(q => {
+        newWeights[q.id] = avgWeight
+      })
+      setWeights(newWeights)
+      setQuestionWeights('cyan-data', newWeights)
+    } else {
+      const factor = 100 / currentTotal
+      const newWeights: { [key: string]: number } = {}
+      allQuestions.forEach(q => {
+        newWeights[q.id] = (weights[q.id] || 0) * factor
+      })
+      setWeights(newWeights)
+      setQuestionWeights('cyan-data', newWeights)
+      const totalWeightedScore = allQuestions.reduce((sum, q) => {
+        const score = questionScores[q.id] || 0
+        const weight = newWeights[q.id] || 0
+        return sum + (score * weight / 100)
+      }, 0)
+      setScore('cyan-data', totalWeightedScore)
     }
   }
 
-  const totalScore = Object.values(moduleScores).reduce((sum, s) => sum + s, 0)
-  const maxTotalScore = cyanDataQuestions.reduce((sum, m) => sum + m.questions.length * 10, 0)
-  const scoreColor = getScoreColor(totalScore, maxTotalScore)
+  const totalWeightedScore = allQuestions.reduce((sum, q) => {
+    const score = questionScores[q.id] || 0
+    const weight = weights[q.id] || 0
+    return sum + (score * weight / 100)
+  }, 0)
+  
+  const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(1))
+  const scoreColor = getScoreColor(totalWeightedScore, 100)
 
   return (
     <div className="question-page">
@@ -94,15 +161,14 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
         <div className="header-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
           <div className="score-label">Total Score</div>
           <div className="score-value" style={{ color: scoreColor }}>
-            {totalScore.toFixed(1)} / {maxTotalScore}
+            {totalWeightedScore.toFixed(1)} / 100
           </div>
         </div>
       </div>
 
-      <div className="question-content">
+      <div className="question-content-with-sidebar">
         <div className="questions-panel">
           {cyanDataQuestions.flatMap(module => module.questions).map((question) => {
-            const module = cyanDataQuestions.find(m => m.questions.includes(question))!
             return (
                 <div key={question.id} className="question-item" style={{ borderLeftColor: scoreColor }}>
                   <label className="question-label">{question.text}</label>
@@ -126,7 +192,7 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                       <input
                         type="number"
                         value={answers[question.id] || ''}
-                        onChange={(e) => handleAnswerChange(question.id, module.id, e.target.value)}
+                        onChange={(e) => handleAnswerChange(question.id, e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
                         onKeyDown={(e) => {
                           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -143,7 +209,7 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                   {question.type === 'select' && (
                     <select
                       value={answers[question.id] || ''}
-                      onChange={(e) => handleAnswerChange(question.id, module.id, e.target.value)}
+                      onChange={(e) => handleAnswerChange(question.id, e.target.value)}
                       className="question-select"
                     >
                       <option value="">-- Select an option --</option>
@@ -154,18 +220,89 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                       ))}
                     </select>
                   )}
-
-                  {question.referenceUrl && (
-                    <div className="question-reference">
-                      <strong>Reference:</strong>{' '}
-                      <a href={question.referenceUrl} target="_blank" rel="noopener noreferrer">
-                        {question.referenceUrl}
-                      </a>
-                    </div>
-                  )}
                 </div>
             )
           })}
+        </div>
+
+        {/* 右侧固定面板：权重设置和得分表 */}
+        <div className="sidebar-panel">
+          {/* 权重设置 */}
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Question Weights</h3>
+            <div className="total-weight-display" style={{ 
+              backgroundColor: totalWeight === 100 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+              borderColor: totalWeight === 100 ? '#22c55e' : '#ef4444'
+            }}>
+              <span>Total: {totalWeight.toFixed(1)}%</span>
+              {totalWeight !== 100 && (
+                <>
+                  <span className="weight-warning">⚠ Must equal 100%</span>
+                  <button 
+                    className="normalize-button"
+                    onClick={normalizeWeights}
+                    title="Auto-adjust weights to 100%"
+                  >
+                    Normalize
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="weights-list">
+              {allQuestions.map((question, index) => (
+                <div key={question.id} className="weight-item">
+                  <label className="weight-label">Q{index + 1}</label>
+                  <div className="weight-input-group">
+                    <input
+                      type="number"
+                      value={weights[question.id]?.toFixed(1) || '0.0'}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        handleWeightChange(question.id, Math.max(0, Math.min(100, value)))
+                      }}
+                      className="weight-input"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
+                    <span className="weight-unit">%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 得分表 */}
+          <div className="sidebar-section">
+            <h3 className="sidebar-title">Score Table</h3>
+            <div className="scores-list">
+              {allQuestions.map((question, index) => {
+                const rawScore = questionScores[question.id] || 0
+                const weight = weights[question.id] || 0
+                const weightedScore = rawScore * weight / 100
+                return (
+                  <div key={question.id} className="score-item">
+                    <div className="score-item-header">
+                      <span className="score-question-label">Q{index + 1}</span>
+                      <span className="score-raw">{rawScore.toFixed(1)}/100</span>
+                    </div>
+                    <div className="score-item-details">
+                      <span className="score-weight">{weight.toFixed(1)}% weight</span>
+                      <span className="score-weighted" style={{ color: scoreColor }}>
+                        = {weightedScore.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div className="total-score-display" style={{ backgroundColor: `${scoreColor}33`, borderColor: scoreColor }}>
+              <span className="total-score-label">Scores Total</span>
+              <span className="total-score-value" style={{ color: scoreColor }}>
+                {totalWeightedScore.toFixed(2)} / 100
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

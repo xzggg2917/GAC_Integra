@@ -8,6 +8,7 @@ interface DimensionState {
   customWeights: { [key: string]: number }
   scores: { [key: string]: number }
   allAnswers: { [dimensionId: string]: { [questionId: string]: string } }
+  questionWeights: { [dimensionId: string]: { [questionId: string]: number } }
 }
 
 interface DimensionContextType extends DimensionState {
@@ -19,6 +20,8 @@ interface DimensionContextType extends DimensionState {
   getWeight: (dimensionId: string) => number
   saveAnswers: (dimensionId: string, answers: { [questionId: string]: string }) => void
   getAnswers: (dimensionId: string) => { [questionId: string]: string }
+  setQuestionWeights: (dimensionId: string, weights: { [questionId: string]: number }) => void
+  getQuestionWeights: (dimensionId: string) => { [questionId: string]: number }
   loadAllData: (data: Partial<DimensionState>) => void
   getAllData: () => DimensionState
   setCurrentFilePath: (path: string | null) => void
@@ -48,6 +51,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   })
   const [scores, setScores] = useState<{ [key: string]: number }>({})
   const [allAnswers, setAllAnswers] = useState<{ [dimensionId: string]: { [questionId: string]: string } }>({})
+  const [questionWeights, setQuestionWeights] = useState<{ [dimensionId: string]: { [questionId: string]: number } }>({})
   
   // 使用 ref 来防止在初始加载时触发自动保存
   const isInitialMount = useRef(true)
@@ -73,6 +77,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
                 if (fileContent.data.customWeights) setCustomWeights(fileContent.data.customWeights)
                 if (fileContent.data.scores) setScores(fileContent.data.scores)
                 if (fileContent.data.allAnswers) setAllAnswers(fileContent.data.allAnswers)
+                if (fileContent.data.questionWeights) setQuestionWeights(fileContent.data.questionWeights)
                 console.log('Data loaded from file:', result.lastFilePath)
               }
             } catch (error) {
@@ -111,7 +116,8 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
             selectedDimensions,
             customWeights,
             scores,
-            allAnswers
+            allAnswers,
+            questionWeights
           }
           console.log('[auto-save] Saving to:', currentFilePath)
           console.log('[auto-save] Data:', data)
@@ -129,7 +135,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
         console.log('[auto-save] Skipped: No file path set')
       }
     }
-  }, [selectedDimensions, customWeights, scores, allAnswers, isLoaded, currentFilePath])
+  }, [selectedDimensions, customWeights, scores, allAnswers, questionWeights, isLoaded, currentFilePath])
 
   // 页面状态变化时保存
   useEffect(() => {
@@ -159,12 +165,21 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     return allAnswers[dimensionId] || {}
   }
 
+  const setQuestionWeightsFunc = (dimensionId: string, weights: { [questionId: string]: number }) => {
+    setQuestionWeights(prev => ({ ...prev, [dimensionId]: weights }))
+  }
+
+  const getQuestionWeights = (dimensionId: string) => {
+    return questionWeights[dimensionId] || {}
+  }
+
   const getAllData = (): DimensionState => {
     return {
       selectedDimensions,
       customWeights,
       scores,
-      allAnswers
+      allAnswers,
+      questionWeights
     }
   }
 
@@ -173,6 +188,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (data.customWeights) setCustomWeights(data.customWeights)
     if (data.scores) setScores(data.scores)
     if (data.allAnswers) setAllAnswers(data.allAnswers)
+    if (data.questionWeights) setQuestionWeights(data.questionWeights)
   }
 
   const setCurrentFilePath = async (path: string | null) => {
@@ -201,6 +217,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     setCustomWeights(initial)
     setScores({})
     setAllAnswers({})
+    setQuestionWeights({})
     setCurrentFilePathState(null)
   }
 
@@ -223,8 +240,8 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   }
 
   const getTotalWeight = () => {
-    return Object.entries(customWeights)
-      .reduce((sum, [id, weight]) => sum + weight, 0)
+    return Object.values(customWeights)
+      .reduce((sum, weight) => sum + weight, 0)
   }
 
   const getTotalScore = () => {
@@ -246,6 +263,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
         customWeights,
         scores,
         allAnswers,
+        questionWeights,
         setSelectedDimensions,
         setCustomWeights,
         setScore,
@@ -254,6 +272,8 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
         getWeight,
         saveAnswers,
         getAnswers,
+        setQuestionWeights: setQuestionWeightsFunc,
+        getQuestionWeights,
         loadAllData,
         getAllData,
         setCurrentFilePath,

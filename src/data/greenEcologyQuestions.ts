@@ -2,12 +2,21 @@ export interface Question {
   id: string;
   moduleId: string;
   question: string;
-  type: 'input' | 'select' | 'checkbox';
+  type: 'input' | 'select' | 'checkbox' | 'multi-input' | 'multi-reagent';
   unit?: string;
   formula?: string;
   reference?: { name: string; url: string };
   options?: { value: string; score: number; label: string }[];
   scoringRules?: { min?: number; max?: number; score: number; description: string }[];
+  multiInputFields?: Array<{ 
+    name: string; 
+    label: string; 
+    placeholder: string; 
+    unit: string; 
+    type: 'number'; 
+    min?: number; 
+    max?: number;
+  }>;
 }
 
 export interface Module {
@@ -28,188 +37,211 @@ export const greenEcologyModules: Module[] = [
       {
         id: 'q1',
         moduleId: 'hazard-assessment',
-        question: 'Q1: Solvent Hazard Exponential Model - What are the GHS hazard codes on the reagent bottle label? (including metal salt formula)',
+        question: 'Q1: Analytical Process Integration & Prevention Design (Prevention & Integration)',
         type: 'select',
-        formula: 'Score = 10 × exp(-Σφᵢ · α · Ncodes,i)',
-        reference: {
-          name: 'Check GHS Codes via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
-        },
         options: [
-          { value: 'none', score: 10, label: 'Water (N = 0): 10 × e⁰ = 10 points' },
-          { value: 'ethanol', score: 8.6, label: 'Ethanol (N = 1, flammable only): 10 × e⁻⁰·¹⁵ ≈ 8.6 points' },
-          { value: 'ethyl-acetate', score: 6.4, label: 'Ethyl acetate (N = 3, flammable + harmful): 10 × e⁻⁰·⁴⁵ ≈ 6.4 points' },
-          { value: 'chloroform', score: 4.7, label: 'Chloroform (N = 5, carcinogenic + toxic): 10 × e⁻⁰·⁷⁵ ≈ 4.7 points' }
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): Online/In-situ Non-destructive Analysis - No sampling or chemical reagents required, real-time data acquisition via probe, achieving zero waste emissions' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Integrated/Miniaturized Instrument Analysis - Using microfluidic or automated ultra-high efficiency technology, extremely low reagent consumption per analysis' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Optimized Conventional Instrument Analysis - Using fast chromatography (analysis time <5min), without any derivatization steps' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): Traditional Offline Instrument Analysis - Involving manual sampling, filtration, longer analysis run time (>15min)' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Tedious manual liquid-liquid extraction or obsolete procedures generating significant solid waste' 
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: '100 pts: Online/in-situ analysis with zero waste and real-time monitoring' },
+          { score: 75, description: '75 pts: Miniaturized/integrated systems with minimal reagent use' },
+          { score: 50, description: '50 pts: Fast chromatography without derivatization' },
+          { score: 25, description: '25 pts: Traditional offline analysis with manual steps' },
+          { score: 0, description: '0 pts: Obsolete procedures with significant waste generation' }
         ]
       },
       {
         id: 'q2',
         moduleId: 'hazard-assessment',
-        question: 'Q2: Bio-Carbon Weighted Ratio - Check reagent bottle label (for "Bio" mark) or raw material source knowledge?',
+        question: 'Q2: Intrinsic Environmental Compatibility of Reagents & Materials (Safer Solvents & Degradability)',
         type: 'select',
-        formula: 'Score = 10 × Σ(mᵢ × Ibio,i) / mtotal_organic',
-        reference: {
-          name: 'Check Chemical Source via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
-        },
         options: [
-          { value: 'all-bio', score: 10, label: 'All bio-based = 10 points' },
-          { value: 'half-bio', score: 5, label: 'Partially bio-based (e.g., ethyl acetate, acetic acid can be bio-sourced) ≈ 5 points' },
-          { value: 'all-petro', score: 0, label: 'All petroleum-based = 0 points' }
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): Natural/Bio-based Green Solvents - Such as pure water, fermentation ethanol, supercritical fluids, completely non-toxic and rapidly biodegradable' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Low-Risk Synthetic Solvents - Such as isopropanol, ethyl acetate. Halogen-free, with minimal hazard codes (H-codes) (1-2 codes)' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Conventional Controllable Solvents - Such as methanol, acetonitrile. Have certain toxicity or flammability, but environmental risks are within controllable range' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): High-Risk/Regulated Solvents - Such as n-hexane, toluene, or reagents containing single halogen atoms' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Using highly toxic, carcinogenic, persistent, or multi-halogenated reagents (such as chloroform, carbon tetrachloride)' 
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: '100 pts: Natural/bio-based solvents, completely non-toxic and rapidly biodegradable' },
+          { score: 75, description: '75 pts: Low-risk synthetic solvents, halogen-free with minimal hazard codes (1-2)' },
+          { score: 50, description: '50 pts: Conventional solvents with controllable environmental risks' },
+          { score: 25, description: '25 pts: High-risk or regulated solvents with single halogen atoms' },
+          { score: 0, description: '0 pts: Highly toxic, carcinogenic, persistent, or multi-halogenated reagents' }
         ]
       },
       {
         id: 'q3',
         moduleId: 'hazard-assessment',
-        question: 'Q3: Halogen Atmospheric Burden - Chemical molecular formula (check if there are F, Cl, Br in the formula)',
-        type: 'input',
-        unit: 'score',
-        formula: 'Score = 10 × (1 - IVOC) + 10 × IVOC × e⁻⁽²·ᴺᶜˡ⁺¹·⁵·ᴺᴮʳ⁺⁰·¹·ᴺꜰ⁾',
+        question: 'Q3: Essential Hazard Index (EHI)',
+        type: 'multi-reagent',
         reference: {
-          name: 'Check Molecular Formula via PubChem',
+          name: 'Check H-Codes via PubChem',
           url: 'https://pubchem.ncbi.nlm.nih.gov'
         },
         scoringRules: [
-          { min: 10, score: 10, description: 'Ethanol (C₂H₆O): No halogens, e⁰ = 1 → 10 points' },
-          { min: 0.2, max: 10, score: 0.2, description: 'Dichloromethane (CH₂Cl₂): Contains 2 Cl, 10 × e⁻⁴ ≈ 0.2 points (severe penalty)' },
-          { min: 7.4, max: 10, score: 7.4, description: 'Trifluoroacetic acid (CF₃COOH): Contains 3 F, 10 × e⁻⁰·³ ≈ 7.4 points (fluorine has less ozone impact, mainly GWP, lighter penalty)' }
+          { score: 100, description: 'Water only (Nₕ=0): Score = 100' },
+          { score: 60, description: 'Low hazard reagent (Nₕ=2, m=0.1kg): Score ≈ 60' },
+          { score: 20, description: 'High hazard reagent (Nₕ=5, m=0.2kg): Score ≈ 20' },
+          { score: 0, description: 'Formula: Score = 100 × exp(-1.5 × √(Σ(mᵢ · N²ₕ,ᵢ)))' }
         ]
       },
       {
         id: 'q4',
         moduleId: 'hazard-assessment',
-        question: 'Q4: Aquatic Toxicity Decay - Check reagent bottle label (for H400, H410, H411 codes)',
-        type: 'select',
-        formula: 'Score = 10 × (1 - max(LevelH4zz) / 4)²',
+        question: 'Q4: Atmospheric Safety Index (ASI)',
+        type: 'multi-input',
         reference: {
-          name: 'Check H-Codes via PubChem',
+          name: 'Check Properties via PubChem',
           url: 'https://pubchem.ncbi.nlm.nih.gov'
         },
-        options: [
-          { value: 'none', score: 10, label: 'No code: 10 × (1 - 0)² = 10 points' },
-          { value: 'h411', score: 2.5, label: 'H411 (toxic): 10 × (1 - 0.5)² = 2.5 points' },
-          { value: 'h400-h410', score: 0, label: 'H400/H410 (highly toxic/long-term toxic): 10 × (1 - 1)² = 0 points' }
+        multiInputFields: [
+          { 
+            name: 'tbp', 
+            label: 'Tᵦₚ (Boiling Point)', 
+            placeholder: 'Main organic solvent boiling point', 
+            unit: '°C', 
+            type: 'number'
+          },
+          { 
+            name: 'nhalogen', 
+            label: 'Nₕₐₗₒ (Halogen Count)', 
+            placeholder: 'Number of F, Cl, Br atoms', 
+            unit: 'count', 
+            type: 'number', 
+            min: 0 
+          },
+          { 
+            name: 'nh', 
+            label: 'Nₕ (H-codes Count)', 
+            placeholder: 'Number of H-codes', 
+            unit: 'count', 
+            type: 'number', 
+            min: 0 
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Water (Tᵦₚ=100°C, no halogen, Nₕ=0): Score ≈ 100' },
+          { score: 75, description: 'Ethanol (Tᵦₚ=78°C, no halogen, Nₕ=1): Score ≈ 75' },
+          { score: 20, description: 'Chloroform (Tᵦₚ=61°C, 3 Cl, Nₕ=5): Score ≈ 20' },
+          { score: 0, description: 'Formula: Score = 100 × (1/(1+e^(-0.05·(Tᵦₚ-50)))) · exp(-(2·Nₕₐₗₒ + 0.5·Nₕ)/5)' }
         ]
       },
       {
         id: 'q5',
         moduleId: 'hazard-assessment',
-        question: 'Q5: Structural Alert Index for Persistence - Chemical molecular formula',
-        type: 'checkbox',
-        formula: 'Score = 10 × ∏(1 - Pⱼ)',
-        reference: {
-          name: 'Check Chemical Structure via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
-        },
-        options: [
-          { value: 'pfas', score: 100, label: 'Fluorine atoms (NF ≥ 3): P = 1.0 (PFAS risk, direct zero) (-100 points)' },
-          { value: 'aromatic-ring', score: 20, label: 'Aromatic ring (Cl on Ring): P = 0.2 (-20 points)' },
-          { value: 'heavy-metal', score: 100, label: 'Heavy metal atoms (Hg, Pb, Cd): P = 1.0 (-100 points)' },
-          { value: 'long-chain', score: 50, label: 'Long chain (C > 16): P = 0.5 (-50 points)' }
+        question: 'Q5: Operational Energy Load (OEL)',
+        type: 'multi-input',
+        multiInputFields: [
+          { 
+            name: 'power', 
+            label: 'Pⱼ (Total Power)', 
+            placeholder: 'Sum of all equipment rated power', 
+            unit: 'W', 
+            type: 'number', 
+            min: 0 
+          },
+          { 
+            name: 'time', 
+            label: 'tⱼ (Total Time)', 
+            placeholder: 'Complete analysis process duration', 
+            unit: 'min', 
+            type: 'number', 
+            min: 0 
+          },
+          { 
+            name: 'throughput', 
+            label: 'n (Sample Throughput)', 
+            placeholder: 'Number of analytes in samples per run', 
+            unit: 'samples', 
+            type: 'number', 
+            min: 1 
+          }
         ],
         scoringRules: [
-          { score: 10, description: 'No structural alerts → 10 points' },
-          { score: 0, description: 'Contains PFAS or heavy metals → 0 points' },
-          { score: 8, description: 'Only aromatic ring → 8 points' },
-          { score: 5, description: 'Contains long chain → 5 points' }
+          { score: 100, description: 'Low power/high throughput: Score ≈ 100' },
+          { score: 60, description: 'Moderate equipment (1000W, 30min, n=10): Score ≈ 60' },
+          { score: 20, description: 'High energy/single sample: Score ≈ 20' },
+          { score: 0, description: 'Formula: Score = 100 × exp(-Σ(Pⱼ·tⱼ)/(10000·n))' }
         ]
-      }
-    ]
-  },
-  {
-    id: 'atom-economy',
-    name: 'Atom Economy',
-    nameEn: 'Atomic and Molecular Efficiency',
-    focus: 'Evaluating atom utilization and waste generation',
-    questions: [
+      },
       {
         id: 'q6',
         moduleId: 'atom-economy',
-        question: 'Q6: Atom Economy Efficiency - Periodic table (calculate molecular weight MW)',
-        type: 'input',
-        unit: 'score',
-        formula: 'Score = 10 × (MWproduct - MWwaste) / MWreagent',
+        question: 'Q6: Waste Burden Intensity (WBI)',
+        type: 'multi-input',
         reference: {
-          name: 'Check Molecular Weight via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
+          name: 'Waste Management Guidelines',
+          url: 'https://www.epa.gov/hwgenerators'
         },
+        multiInputFields: [
+          { 
+            name: 'vwaste', 
+            label: 'Vwaste (Total Waste)', 
+            placeholder: 'Total liquid/solid waste generated', 
+            unit: 'mL', 
+            type: 'number', 
+            min: 0 
+          },
+          { 
+            name: 'eta', 
+            label: 'η (Recycling Rate)', 
+            placeholder: 'Waste recycling/reuse rate', 
+            unit: '0-1', 
+            type: 'number', 
+            min: 0, 
+            max: 1 
+          }
+        ],
         scoringRules: [
-          { min: 10, score: 10, description: 'Addition reaction (no waste), Score = 10' },
-          { min: 5.8, max: 10, score: 5.8, description: 'Typical derivatization (e.g., silylation BSTFA, MW 257, releases trimethylsilanol MW 108): 10 × (257-108)/257 ≈ 5.8 points' }
-        ]
-      },
-      {
-        id: 'q7',
-        moduleId: 'atom-economy',
-        question: 'Q7: Bioaccumulation Potential Index - Design intent: Some reagents, although not lethal (Q4 pass), are "lipophilic" and easily accumulate in fish fat, eventually entering human body (e.g., DDT, certain organic solvents). We use Log P (octanol-water partition coefficient) to quantify this risk',
-        type: 'input',
-        unit: 'score',
-        formula: 'Score = 10 × 1 / (1 + e^(α(LogPmax - β)))',
-        reference: {
-          name: 'Check Log P (Octanol/Water Partition Coefficient) via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
-        },
-        scoringRules: [
-          { max: 3, score: 10, description: 'LogPmax < 3: No significant bioaccumulation' },
-          { min: 3, max: 5, score: 5, description: 'LogPmax 3-5: Environmental science generally considers Log P > 3 to have significant bioaccumulation' },
-          { min: 5, score: 2, description: 'LogPmax > 5: High bioaccumulation risk' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'energy-emissions',
-    name: 'Energy & Emissions',
-    nameEn: 'Energy Consumption and Atmospheric Impact',
-    focus: 'Clean energy usage and carbon footprint',
-    questions: [
-      {
-        id: 'q8',
-        moduleId: 'energy-emissions',
-        question: 'Q8: Stoichiometric Eutrophication - Buffer salt chemical formula (count N and P atoms)',
-        type: 'input',
-        unit: 'score',
-        formula: 'Score = 10 × e⁻⁽⁵·ᴺᴾ⁺¹·ᴺᴺ⁾',
-        reference: {
-          name: 'Check Chemical Formula via PubChem',
-          url: 'https://pubchem.ncbi.nlm.nih.gov'
-        },
-        scoringRules: [
-          { min: 10, score: 10, description: 'Ethanol (C₂H₆O₁): NP = 0, NN = 0 → 10 × e⁰ = 10 points' },
-          { min: 3.7, max: 10, score: 3.7, description: 'Ammonium acetate (CH₃COONH₄): NN = 1 → 10 × e⁻¹ ≈ 3.7 points' },
-          { min: 0.06, max: 3.7, score: 0.06, description: 'Potassium dihydrogen phosphate (KH₂PO₄): NP = 1 → 10 × e⁻⁵ ≈ 0.06 points (close to 0)' }
-        ]
-      },
-      {
-        id: 'q9',
-        moduleId: 'energy-emissions',
-        question: 'Q9: Clean Energy Vector - Laboratory location city (common sense: hydroelectric-rich area or coal power area)',
-        type: 'select',
-        formula: 'Score = 10 × (Rlocal + δREC)',
-        reference: {
-          name: 'Check Local Energy Structure',
-          url: 'https://www.iea.org'
-        },
-        options: [
-          { value: 'hydro-nuclear', score: 8, label: 'Hydro/wind/nuclear power base (e.g., Yunnan, Jiuquan): 0.8' },
-          { value: 'mixed-grid', score: 3, label: 'General mixed power grid (e.g., Yangtze River Delta, Pearl River Delta): 0.3' },
-          { value: 'coal', score: 1, label: 'Pure coal power area (e.g., some mining cities): 0.1' }
-        ]
-      },
-      {
-        id: 'q10',
-        moduleId: 'energy-emissions',
-        question: 'Q10: Photochemical Smog Potential - Design intent: Some solvents (e.g., ethanol, acetone), although low GWP (not warming the earth) and low Ozone Depletion (not damaging stratospheric ozone), are extremely volatile and form "photochemical smog" (ground-level ozone) under sunlight, causing urban haze and plant death. This is the biggest hidden pollution source in analytical laboratories (using large amounts of organic solvents)',
-        type: 'input',
-        unit: '°C',
-        formula: 'Score = 10 × 1 / (1 + e⁻ᵏ⁽ᵀᵇ⁻ᵀᵗʰʳᵉˢʰᵒˡᵈ⁾)',
-        reference: {
-          name: 'Check Boiling Point via ChemicalBook',
-          url: 'https://www.chemicalbook.com'
-        },
-        scoringRules: [
-          { min: 80, score: 10, description: 'Solvents with boiling point below 80°C (e.g., diethyl ether, acetone, dichloromethane) are considered highly volatile and are key contributors to photochemical pollution' },
-          { max: 80, score: 5, description: '(For mixed solvents, use the lowest boiling point component value, following the "bottleneck effect")' }
+          { score: 100, description: 'Minimal waste (<10 mL) with high recycling: Score ≈ 100' },
+          { score: 60, description: 'Moderate waste (50 mL, η=0.5): Score ≈ 60' },
+          { score: 10, description: 'Large waste (>200 mL) without recycling: Score ≈ 10' },
+          { score: 0, description: 'Formula: Score = 100 × [1/(1+0.05·(Vwaste·(1-η))^1.2)] · exp(-Vwaste/200)' }
         ]
       }
     ]

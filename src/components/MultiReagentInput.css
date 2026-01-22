@@ -1,0 +1,163 @@
+.multi-reagent-input {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.reagent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reagent-entry {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.reagent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.reagent-number {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.remove-reagent-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.remove-reagent-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+}
+
+.reagent-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.reagent-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reagent-field label {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reagent-field label .field-description {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.reagent-field .input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding-right: 12px;
+}
+
+.reagent-field input {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 14px;
+  outline: none;
+}
+
+.reagent-field input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.reagent-field .unit {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.add-reagent-btn {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10b981;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.add-reagent-btn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+}
+
+.score-preview {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.score-value {
+  color: #10b981;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.score-formula {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .reagent-fields {
+    grid-template-columns: 1fr;
+  }
+}
