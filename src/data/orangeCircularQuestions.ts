@@ -2,11 +2,19 @@ export interface Question {
   id: string
   moduleId: string
   question: string
-  type: 'input' | 'select'
+  type: 'input' | 'select' | 'multi-input'
   unit?: string
-  formula?: string
+  multiInputFields?: {
+    name: string
+    label: string
+    unit: string
+    placeholder: string
+    min?: number
+    max?: number
+  }[]
+  referenceTable?: string
   options?: { value: string; score: number; label: string }[]
-  scoringRules?: { min?: number; max?: number; score: number; description: string }[]
+  scoringRules?: { score: number; description: string }[]
 }
 
 export interface Module {
@@ -19,150 +27,270 @@ export interface Module {
 
 export const orangeCircularModules: Module[] = [
   {
-    id: 'mci',
-    name: 'MCI',
-    nameEn: 'Material Circularity Indicator',
-    focus: 'Recovery, Reuse and Waste Destination',
+    id: 'qualitative-assessment',
+    name: 'Qualitative Assessment',
+    nameEn: 'Qualitative Assessment',
+    focus: 'Material Provenance and End-of-life Hierarchy',
     questions: [
       {
         id: 'q1',
-        moduleId: 'mci',
-        question: 'Q1: Solvent Recovery Rate - In this analytical method, are multiple organic solvents (e.g., mobile phase, extraction solvent) recovered or reused multiple times through condensation or other recovery methods?',
-        type: 'input',
-        unit: '%',
-        formula: 'R_solvent = V_recycled/V_total × 100%',
-        scoringRules: [
-          { min: 40, score: 10, description: 'Direct score conversion (V: volume). Example: Recover 40% of solvent → 40 points' },
-          { max: 0, score: 0, description: '0% recovery (disposable) → 0 points' }
+        moduleId: 'qualitative-assessment',
+        question: 'Q1: Material Provenance - Evaluate the initial source of the main reagents or consumables used in the procedure, considering whether they are renewable bio-based resources or non-renewable resources',
+        type: 'select',
+        options: [
+          { value: '100', label: 'A: 100% from renewable sources or bio-mass feedstocks (e.g., biomass without competing with food)', score: 100 },
+          { value: '75', label: 'B: ≥50% bio-based or fully proven post-consumer recycled (PCR)', score: 75 },
+          { value: '50', label: 'C: Derived from internal lab recycling process (e.g., recovered petrochemicals)', score: 50 },
+          { value: '25', label: 'D: Derived from non-renewable petrochemical but belongs to industrial by-products (e.g., ethylene)', score: 25 },
+          { value: '0', label: 'E: Derived from virgin petrochemical resources with minimal recycled component', score: 0 }
         ]
       },
       {
         id: 'q2',
-        moduleId: 'mci',
-        question: 'Q2: Consumable Reuse Life (Columns/Tubes/SPEF Cartridges) - What is the average useful life (number of injections) of the core consumable materials for the test method?',
+        moduleId: 'qualitative-assessment',
+        question: 'Q2: End-of-life Hierarchy - Evaluate the end-of-life fate of the waste or by-products when they lose their use value, prioritizing natural or industrial cycles over landfill',
         type: 'select',
         options: [
-          { value: '10', label: '> 1000 injections (High durability)', score: 10 },
-          { value: '7.5', label: '500-1000 injections', score: 7.5 },
-          { value: '5', label: '100-500 injections', score: 5 },
-          { value: '2.5', label: '10-100 injections', score: 2.5 },
-          { value: '0', label: 'Single use (Disposable/One-off)', score: 0 }
+          { value: '100', label: 'A: Natural component fully biodegraded into benign molecules (H₂O, CO₂), directly returned to the biosphere', score: 100 },
+          { value: '75', label: 'B: Needs industrial composting or specific bio-stage but can ultimately return to nature', score: 75 },
+          { value: '50', label: 'C: Inorganic degradation product, but can be reused through material management within industrial system (e.g., 100% closed-loop recovery)', score: 50 },
+          { value: '25', label: 'D: No method for return, but can be converted via thermal/combustion energy recovery (e.g., energy recovery), with minimal toxic emissions', score: 25 },
+          { value: '0', label: 'E: Belongs to long-lasting solid waste, must go through landfill or conversion handling, with potential long-term harm', score: 0 }
         ]
-      },
+      }
+    ]
+  },
+  {
+    id: 'quantitative-assessment',
+    name: 'Quantitative Assessment',
+    nameEn: 'Quantitative Assessment',
+    focus: 'Circular Loop Index, Biomass Substitution Intensity, Ecosystem Integration Potential',
+    questions: [
       {
         id: 'q3',
-        moduleId: 'mci',
-        question: 'Q3: Material Properties of Auxiliary Consumables - What are the main materials of the auxiliary consumables used (e.g., caps, transfer tubes, sample bottles)?',
-        type: 'select',
-        options: [
-          { value: '10', label: 'Glass or metal (can be cleaned indefinitely for reuse)', score: 10 },
-          { value: '5', label: 'Biodegradable plastics (e.g., PLA) or plastics with established recycling pathways', score: 5 },
-          { value: '0', label: 'One-time non-degradable plastics (PPPE) discarded directly', score: 0 }
+        moduleId: 'quantitative-assessment',
+        question: 'Q3: Circular Loop Index (CLI) - Measure the single-time recovery rate of core materials and the maximum theoretical reuse cycles under non-degraded performance conditions',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'R',
+            label: 'R (Single-time Recovery Rate)',
+            unit: 'decimal',
+            placeholder: 'Enter the core material single recovery rate (0 ≤ R ≤ 1). Example: 0.7 represents 70% recovery',
+            min: 0,
+            max: 1
+          },
+          {
+            name: 'N',
+            label: 'N (Maximum Reuse Cycles)',
+            unit: 'times',
+            placeholder: 'Enter the theoretical maximum reuse cycles without performance degradation. Example: Column can be reused 5 times, enter 5',
+            min: 0
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: High recovery rate with multiple sustainable reuse cycles' },
+          { score: 60, description: 'Good: Moderate recovery with adequate reuse potential' },
+          { score: 30, description: 'Fair: Low recovery rate or limited reuse cycles' },
+          { score: 0, description: 'Poor: Negligible recovery or single-use only' }
         ]
       },
       {
         id: 'q4',
-        moduleId: 'mci',
-        question: 'Q4: End-of-Life Destination of Waste Liquids/Waste Materials - How are the waste materials generated after analysis ultimately disposed of?',
-        type: 'select',
-        options: [
-          { value: '10', label: 'Internal recycling/regeneration (Recycle)', score: 10 },
-          { value: '7.5', label: 'Energy recovery incineration (Energy Recovery)', score: 7.5 },
-          { value: '2.5', label: 'Non-toxic incineration (Incineration)', score: 2.5 },
-          { value: '0', label: 'Landfill or unknown destination', score: 0 }
+        moduleId: 'quantitative-assessment',
+        question: 'Q4: Biomass Substitution Intensity (BSI) - Measure the proportion of non-fossil carbon (bio-carbon, captured CO₂ etc.) in the material and the natural regeneration cycle time of the feedstock',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'Fb',
+            label: 'Fb (Sustainable Carbon Fraction)',
+            unit: 'decimal',
+            placeholder: 'Enter the proportion of non-fossil carbon (0≤Fb≤1). 1.0=full biomass, 0=full petroleum',
+            min: 0,
+            max: 1
+          },
+          {
+            name: 'Tr',
+            label: 'Tr (Regeneration Period)',
+            unit: 'year',
+            placeholder: 'Enter the natural feedstock recovery time (years). For fossil energy sources, considered non-renewable',
+            min: 0
+          }
+        ],
+        referenceTable: `<table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: rgba(0,0,0,0.05);">
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Level</th>
+              <th style="padding: 8px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">Fb Value</th>
+              <th style="padding: 8px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">Tr Value</th>
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Typical Material Description</th>
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Common Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L1: Rapid-growth</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1.0</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.5</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Agricultural waste/fast-growing crops</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Straw, algae</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L2: Standard biomass</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1.0</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Annual crop fermentation products</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Bioethanol</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L3: Long-cycle biomass</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.9</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">20.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Multi-year woody plant resources</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Pine, hardwood</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L4: High-mix composite</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.7</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">10.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Recycled materials with biomass blends</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Recycled/assisted materials</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L5: Partial recycled</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.5</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">15.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Partial recycling industrial chemicals</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Recovery chemical solvents</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L6: Petrochemical</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.3</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">25.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Industrial petrochemical by-products</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Acetonitrile</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L7: Low-grade petro</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.1</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">50.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Difficult-to-recycle or unstable petrochemicals</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Stone oil, biofuel waste</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L8: Fossil origin</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">0.05</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">100.0</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Direct high-purity petrochemical solvents</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Chloroform</td>
+            </tr>
+          </tbody>
+        </table>`,
+        scoringRules: [
+          { score: 100, description: 'Excellent: High biomass content with rapid regeneration cycle' },
+          { score: 60, description: 'Good: Moderate biomass substitution with acceptable regeneration time' },
+          { score: 30, description: 'Fair: Limited biomass content or long regeneration period' },
+          { score: 0, description: 'Poor: Fossil-based origin with no regeneration potential' }
         ]
-      }
-    ]
-  },
-  {
-    id: 'bio-s',
-    name: 'Bio-S',
-    nameEn: 'Bio-renewability Score',
-    focus: 'Based on bio-based carbon from renewable materials rather than petroleum-based materials',
-    questions: [
+      },
       {
         id: 'q5',
-        moduleId: 'bio-s',
-        question: 'Q5: Bio-based Carbon Content of Solvents - For the main organic solvents (excluding water) used in the method, what is the average percentage of bio-based carbon (Bio-based Carbon)?',
-        type: 'input',
-        unit: '%',
-        formula: 'Score = Σ(C_bio,i × φ_i)',
+        moduleId: 'quantitative-assessment',
+        question: 'Q5: Ecosystem Integration Potential (EIP) - Measure the biodegradation percentage in standard 28-day aerobic degradation tests and the environmental half-life for concentration reduction',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'D28',
+            label: 'D28 (28-Day Degradation Rate)',
+            unit: '%',
+            placeholder: 'Enter 28-day aerobic degradation rate (%). Higher values indicate easier bio-mineralization',
+            min: 0,
+            max: 100
+          },
+          {
+            name: 'Hlife',
+            label: 'Hlife (Environmental Half-life)',
+            unit: 'day',
+            placeholder: 'Enter environmental half-life (days). Lower values indicate shorter environmental persistence',
+            min: 0
+          }
+        ],
+        referenceTable: `<table style="width:100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: rgba(0,0,0,0.05);">
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Level</th>
+              <th style="padding: 8px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">D28 (%)</th>
+              <th style="padding: 8px; text-align: center; border-bottom: 2px solid #ddd; font-weight: 600;">Hlife (days)</th>
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Environmental Pressure Description</th>
+              <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ddd; font-weight: 600;">Common Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L1: Instant integration</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">100</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Unstable, rapidly converts to harmless substances</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">No machine, oxidized gas</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L2: Excellent degradation</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">95</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">3</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Extremely easily utilized by microorganisms</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Ethanol, glycerol, glucose</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L3: Bio-degradable</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">85</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">10</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Meets standard definition of biodegradability</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Methanol, propanol</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L4: Moderate degradation</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">65</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">30</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Lower environmental pressure</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Isopropanol, some ester solvents</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L5: Difficult to degrade</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">45</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">60</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Requires specific environmental conditions to degrade</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Dichloroethane, epoxide</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L6: Slow degradation</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">20</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">90</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Certain stability exists in the environment</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Acetonitrile</td>
+            </tr>
+            <tr style="background: rgba(0,0,0,0.02);">
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L7: Extremely persistent</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">5</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">200</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Difficult to degrade, potentially accumulates in soft tissues</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Toluene, four chlorides</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">L8: Ultra-persistent</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1</td>
+              <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">365</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Extremely stable and toxic, hazardous to environment</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Chloroform</td>
+            </tr>
+          </tbody>
+        </table>`,
         scoringRules: [
-          { min: 100, score: 10, description: 'Example: Using bioethanol (100% Bio) → 100 points' },
-          { max: 0, score: 0, description: 'Example: Using ethanol (0% Bio) → 0 points' },
-          { min: 50, max: 50, score: 10, description: 'Example: Using 50:50 ethanol/water (assuming water not counted) → 100 points (only machine-derived component calculated)' }
-        ]
-      },
-      {
-        id: 'q6',
-        moduleId: 'bio-s',
-        question: 'Q6: Renewable Certification of Reagents/Derivatives - For key chemical reagents (non-solvent types, e.g., indicator reagents, derivatization reagents), are all clearly certified as bio-based/renewable (e.g., FSC, RSB, USDA BioPreferred)?',
-        type: 'select',
-        options: [
-          { value: '10', label: 'Has clear bio-based/renewable certification', score: 10 },
-          { value: '5', label: 'Claimed to be natural source but not certified', score: 5 },
-          { value: '0', label: 'Traditional petrochemical synthetic products', score: 0 }
-        ]
-      },
-      {
-        id: 'q7',
-        moduleId: 'bio-s',
-        question: 'Q7: Gas Source Properties - Are the carrier/auxiliary gases used (e.g., He, N₂, H₂, Ar) sources that can regenerate or are infinitely available without resource depletion?',
-        type: 'select',
-        options: [
-          { value: '10', label: 'H₂ (electrolyzed water production) or N₂ (air separation enrichment, unlimited)', score: 10 },
-          { value: '5', label: 'Ar (inert gas, air separation purification)', score: 5 },
-          { value: '0', label: 'He (helium, non-renewable strategic resource)', score: 0 }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'cf-lca',
-    name: 'CF-LCA',
-    nameEn: 'Carbon Footprint',
-    focus: 'Low carbon and emissions throughout the life cycle',
-    questions: [
-      {
-        id: 'q8',
-        moduleId: 'cf-lca',
-        question: 'Q8: Direct Energy Consumption per Analysis - How much direct electricity is consumed to complete one sample analysis cycle (from sample placement + instrument operation)?',
-        type: 'input',
-        unit: 'kWh',
-        formula: 'E_sample = P_used×t / N_sample',
-        scoringRules: [
-          { max: 0.1, score: 10, description: '< 0.1 kWh (Low energy consumption)' },
-          { min: 0.1, max: 0.5, score: 7.5, description: '0.1 - 0.5 kWh' },
-          { min: 0.5, max: 1.5, score: 5, description: '0.5 - 1.5 kWh' },
-          { min: 1.5, max: 5.0, score: 2.5, description: '1.5 - 5.0 kWh' },
-          { min: 5.0, score: 0, description: '> 5.0 kWh (e.g., large NMR/long-term high-temperature ashing)' }
-        ]
-      },
-      {
-        id: 'q9',
-        moduleId: 'cf-lca',
-        question: 'Q9: Cleanliness of Laboratory Energy Structure - What is the main source of electricity used in the laboratory?',
-        type: 'select',
-        options: [
-          { value: '10', label: '100% renewable energy (solar/wind direct supply)', score: 10 },
-          { value: '7.5', label: 'Mixed grid but purchased green certificates (REC)', score: 7.5 },
-          { value: '5', label: 'Ordinary municipal grid (Grid mix)', score: 5 },
-          { value: '0', label: 'Self-provided coal/oil generator power supply', score: 0 }
-        ]
-      },
-      {
-        id: 'q10',
-        moduleId: 'cf-lca',
-        question: 'Q10: Comprehensive Carbon Footprint (LCA) Estimate - Combining consideration of production, transportation, and laboratory energy consumption, how much total CO₂e emissions per analysis is emitted?',
-        type: 'select',
-        options: [
-          { value: '10', label: '< 50g CO₂e (Extremely low, like paper-based test strips)', score: 10 },
-          { value: '7.5', label: '50g - 200g CO₂e (Routine high-efficiency liquid phase)', score: 7.5 },
-          { value: '5', label: '200g - 1000g CO₂e', score: 5 },
-          { value: '2.5', label: '1kg - 5kg CO₂e', score: 2.5 },
-          { value: '0', label: '> 5kg CO₂e (High pollution high energy consumption process)', score: 0 }
+          { score: 100, description: 'Excellent: Rapid biodegradation with minimal environmental persistence' },
+          { score: 60, description: 'Good: Moderate biodegradability with acceptable half-life' },
+          { score: 30, description: 'Fair: Low biodegradation rate with extended environmental presence' },
+          { score: 0, description: 'Poor: Highly persistent with extreme environmental stability' }
         ]
       }
     ]
   }
-]
+];

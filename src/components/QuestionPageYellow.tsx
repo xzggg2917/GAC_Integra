@@ -77,6 +77,54 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
       }
     }
 
+    // Handle multi-input questions with specific formulas
+    if (question.type === 'multi-input') {
+      try {
+        const data = JSON.parse(answer as string || '{}')
+        
+        // Q3: Occupational Exposure Risk Sensitivity Index
+        // Formula: S_tox = 100 · exp(-(H·√t)/40)
+        if (questionId === 'q3') {
+          const H = parseFloat(data.H)
+          const t = parseFloat(data.t)
+          if (isNaN(H) || isNaN(t)) return 0
+          
+          return 100 * Math.exp(-(H * Math.sqrt(t)) / 40)
+        }
+        
+        // Q4: Physical Protection Layer Stable Precision Index
+        // Formula: S_stab = 100 · N⁴/(N⁴ + F)
+        if (questionId === 'q4') {
+          const N = parseFloat(data.N)
+          const F = parseFloat(data.F)
+          if (isNaN(N) || isNaN(F)) return 0
+          
+          const N4 = Math.pow(N, 4)
+          return 100 * N4 / (N4 + F)
+        }
+        
+        // Q5: Thermal Runaway Risk Defense Accuracy Score
+        // Formula: S_therm = 0 when ΔT ≤ 35
+        //          S_therm = 100 · exp[-0.1 · (T_op/(ΔT-35))²] when ΔT > 35
+        if (questionId === 'q5') {
+          const T_op = parseFloat(data.T_op)
+          const deltaT = parseFloat(data.deltaT)
+          if (isNaN(T_op) || isNaN(deltaT)) return 0
+          
+          // Piecewise function: return 0 when ΔT ≤ 35
+          if (deltaT <= 35) return 0
+          
+          // Calculate score when ΔT > 35
+          const ratio = T_op / (deltaT - 35)
+          return 100 * Math.exp(-0.1 * ratio * ratio)
+        }
+        
+        return 0
+      } catch {
+        return 0
+      }
+    }
+
     return 0
   }
 
@@ -247,6 +295,55 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                       onChange={(values) => handleAnswerChange(question.id, values)}
                       placeholder="-- Select conditions (multiple) --"
                     />
+                  )}
+
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <div className="multi-input-container">
+                      {question.multiInputFields.map((field) => {
+                        const currentValue = (() => {
+                          try {
+                            const data = JSON.parse(answers[question.id] as string || '{}')
+                            return data[field.name] || ''
+                          } catch {
+                            return ''
+                          }
+                        })()
+
+                        return (
+                          <div key={field.name} className="input-group">
+                            <label className="input-label">{field.label}</label>
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                onChange={(e) => {
+                                  try {
+                                    const data = JSON.parse(answers[question.id] as string || '{}')
+                                    data[field.name] = e.target.value
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  } catch {
+                                    const data = { [field.name]: e.target.value }
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  }
+                                }}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                  }
+                                }}
+                                className="question-input"
+                                placeholder={field.placeholder}
+                                min={field.min}
+                                max={field.max}
+                                step="any"
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   )}
 
                 </div>

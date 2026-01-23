@@ -48,33 +48,44 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
     if (question.type === 'select') {
       const selectedOption = question.options?.find(opt => opt.value === value)
       return selectedOption?.score || 0
-    } else if (question.type === 'input') {
-      const numValue = parseFloat(value)
-      if (isNaN(numValue)) return 0
-
-      // Q1: Solvent recovery rate - direct percentage to score conversion
-      if (questionId === 'q1') {
-        return Math.min(numValue / 10, 10) // 0-100% → 0-10 points
-      }
-      
-      // Q5: Bio-based carbon content - direct percentage to score conversion
-      if (questionId === 'q5') {
-        return Math.min(numValue / 10, 10) // 0-100% → 0-10 points
-      }
-
-      // Q8: Energy consumption with scoring rules
-      if (questionId === 'q8' && question.scoringRules) {
-        for (const rule of question.scoringRules) {
-          if (rule.max !== undefined && numValue <= rule.max) {
-            return rule.score
-          }
-          if (rule.min !== undefined && rule.max !== undefined && numValue >= rule.min && numValue <= rule.max) {
-            return rule.score
-          }
-          if (rule.min !== undefined && rule.max === undefined && numValue >= rule.min) {
-            return rule.score
-          }
+    } else if (question.type === 'multi-input') {
+      try {
+        const data = JSON.parse(value)
+        
+        // Q3: Circular Loop Index (CLI)
+        // Formula: Score = 65 × tanh(1.0 · R · ln(N + 10)) + 25
+        if (questionId === 'q3') {
+          const R = parseFloat(data.R)
+          const N = parseFloat(data.N)
+          if (isNaN(R) || isNaN(N)) return 0
+          
+          const score = 65 * Math.tanh(1.0 * R * Math.log(N + 10)) + 25
+          return Math.max(0, Math.min(100, score))
         }
+        
+        // Q4: Biomass Substitution Intensity (BSI)
+        // Formula: Score = (25 + 60 · √Fb) · e^(-0.005(Tr-1))
+        if (questionId === 'q4') {
+          const Fb = parseFloat(data.Fb)
+          const Tr = parseFloat(data.Tr)
+          if (isNaN(Fb) || isNaN(Tr)) return 0
+          
+          const score = (25 + 60 * Math.sqrt(Fb)) * Math.exp(-0.005 * (Tr - 1))
+          return Math.max(0, Math.min(100, score))
+        }
+        
+        // Q5: Ecosystem Integration Potential (EIP)
+        // Formula: Score = 60 × √(D28/100 · (1 - Hlife/(Hlife + 100))) + 30
+        if (questionId === 'q5') {
+          const D28 = parseFloat(data.D28)
+          const Hlife = parseFloat(data.Hlife)
+          if (isNaN(D28) || isNaN(Hlife)) return 0
+          
+          const score = 60 * Math.sqrt((D28 / 100) * (1 - Hlife / (Hlife + 100))) + 30
+          return Math.max(0, Math.min(100, score))
+        }
+      } catch {
+        return 0
       }
     }
 
@@ -225,6 +236,88 @@ const QuestionPageOrange: React.FC<QuestionPageOrangeProps> = ({ onClose }) => {
                         </option>
                       ))}
                     </select>
+                  )}
+
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <>
+                      <div className="multi-input-container">
+                        {question.multiInputFields.map((field) => {
+                          const currentValue = (() => {
+                            try {
+                              const data = JSON.parse(answers[question.id] || '{}')
+                              return data[field.name] || ''
+                            } catch {
+                              return ''
+                            }
+                          })()
+
+                          return (
+                            <div key={field.name} className="input-group">
+                              <label className="input-label">{field.label}</label>
+                              <div className="input-with-unit">
+                                <input
+                                  type="number"
+                                  value={currentValue}
+                                  onChange={(e) => {
+                                    try {
+                                      const data = JSON.parse(answers[question.id] || '{}')
+                                      data[field.name] = e.target.value
+                                      handleAnswerChange(question.id, JSON.stringify(data))
+                                    } catch {
+                                      const data = { [field.name]: e.target.value }
+                                      handleAnswerChange(question.id, JSON.stringify(data))
+                                    }
+                                  }}
+                                  onWheel={(e) => e.currentTarget.blur()}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                      e.preventDefault()
+                                    }
+                                  }}
+                                  className="question-input"
+                                  placeholder={field.placeholder}
+                                  min={field.min}
+                                  max={field.max}
+                                  step="any"
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      </div>
+                      
+                      {question.referenceTable && (
+                        <div className="reference-table" style={{ 
+                          marginTop: '16px', 
+                          padding: '16px 18px', 
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          lineHeight: '1.8',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}>
+                          <strong style={{ 
+                            display: 'block', 
+                            marginBottom: '12px', 
+                            color: '#ffffff',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            letterSpacing: '0.5px'
+                          }}>📊 Reference Table</strong>
+                          <div style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            borderRadius: '6px',
+                            padding: '14px',
+                            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)',
+                            overflowX: 'auto'
+                          }}
+                            dangerouslySetInnerHTML={{ __html: question.referenceTable }}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
             )

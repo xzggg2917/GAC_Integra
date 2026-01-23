@@ -54,6 +54,54 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
       }
     }
 
+    // Handle multi-input questions with specific formulas
+    if (question.type === 'multi-input') {
+      try {
+        const data = JSON.parse(answer || '{}')
+        
+        // Q3: Resource-Accuracy Efficiency Index
+        // Formula: Score = 100 · (1 / (1 + e^(-12(Y-0.4)))) · exp(-20 · A²)
+        if (questionId === 'q3') {
+          const Y = parseFloat(data.Y)
+          const A = parseFloat(data.A)
+          if (isNaN(Y) || isNaN(A)) return 0
+          
+          const sigmoid = 1 / (1 + Math.exp(-12 * (Y - 0.4)))
+          const accuracyPenalty = Math.exp(-20 * A * A)
+          return 100 * sigmoid * accuracyPenalty
+        }
+        
+        // Q4: Scale-In Technical Stability Index (SITSI)
+        // Formula: Score = 100 · (P² / (P² + 65)) · exp(-30 · R^1.5)
+        // Note: R is input as decimal (e.g., 0.012 means 1.2%)
+        if (questionId === 'q4') {
+          const P = parseFloat(data.P)
+          const R = parseFloat(data.R)
+          if (isNaN(P) || isNaN(R)) return 0
+          
+          const throughputFactor = (P * P) / (P * P + 65)
+          const precisionPenalty = Math.exp(-30 * Math.pow(R, 1.5))
+          return 100 * throughputFactor * precisionPenalty
+        }
+        
+        // Q5: Minimization-Sensitivity Gain
+        // Formula: Score = 100 · (1 - M_waste/M_total) · (2 / (1 + S²))
+        if (questionId === 'q5') {
+          const wasteRatio = parseFloat(data.wasteRatio)
+          const S = parseFloat(data.S)
+          if (isNaN(wasteRatio) || isNaN(S)) return 0
+          
+          const minimizationFactor = 1 - wasteRatio
+          const sensitivityFactor = 2 / (1 + S * S)
+          return 100 * minimizationFactor * sensitivityFactor
+        }
+        
+        return 0
+      } catch {
+        return 0
+      }
+    }
+
     return 0
   }
 
@@ -212,14 +260,52 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
                     </select>
                   )}
 
-                  {question.scoringRules && (
-                    <div className="scoring-hints" style={{ backgroundColor: `${scoreColor}22`, borderLeftColor: scoreColor }}>
-                      <strong style={{ color: scoreColor }}>Scoring Guide:</strong>
-                      {question.scoringRules.map((rule, idx) => (
-                        <div key={idx} className="scoring-rule">
-                          • {rule.score} pts: {rule.description}
-                        </div>
-                      ))}
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <div className="multi-input-container">
+                      {question.multiInputFields.map((field) => {
+                        const currentValue = (() => {
+                          try {
+                            const data = JSON.parse(answers[question.id] || '{}')
+                            return data[field.name] || ''
+                          } catch {
+                            return ''
+                          }
+                        })()
+
+                        return (
+                          <div key={field.name} className="input-group">
+                            <label className="input-label">{field.label}</label>
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                onChange={(e) => {
+                                  try {
+                                    const data = JSON.parse(answers[question.id] || '{}')
+                                    data[field.name] = e.target.value
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  } catch {
+                                    const data = { [field.name]: e.target.value }
+                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  }
+                                }}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                  }
+                                }}
+                                className="question-input"
+                                placeholder={field.placeholder}
+                                min={field.min}
+                                max={field.max}
+                                step="any"
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

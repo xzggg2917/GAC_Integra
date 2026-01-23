@@ -7,7 +7,7 @@ import { greenEcologyModules } from '../data/greenEcologyQuestions'
 import { bluePracticalityModules } from '../data/bluePracticalityQuestions'
 import { grayIndustryModules } from '../data/grayIndustryQuestions'
 import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
-import { cyanDataQuestions } from '../data/cyanDataQuestions'
+import { cyanDataModules } from '../data/cyanDataQuestions'
 import { orangeCircularModules } from '../data/orangeCircularQuestions'
 import { violetInnovationModules } from '../data/violetInnovationQuestions'
 import './VisualizationPage.css'
@@ -29,7 +29,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       'blue-practicality': bluePracticalityModules,
       'gray-industry': grayIndustryModules,
       'yellow-society': yellowSocietyModules,
-      'cyan-data': cyanDataQuestions,
+      'cyan-data': cyanDataModules,
       'orange-circular': orangeCircularModules,
       'violet-innovation': violetInnovationModules
     }

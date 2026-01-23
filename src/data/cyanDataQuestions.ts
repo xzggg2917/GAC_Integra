@@ -1,163 +1,200 @@
 export interface Question {
-  id: string
-  text: string
-  type: 'input' | 'select' | 'checkbox'
-  maxScore: number
-  options?: Array<{ value: string; label: string; score: number }>
-  checkboxOptions?: Array<{ id: string; label: string; score: number }>
-  formula?: string
-  note?: string
-  referenceUrl?: string
+  id: string;
+  moduleId: string;
+  question: string;
+  type: 'input' | 'select' | 'multi-input';
+  unit?: string;
+  options?: { value: string; score: number; label: string }[];
+  scoringRules?: { min?: number; max?: number; score: number; description: string }[];
+  multiInputFields?: Array<{
+    name: string;
+    label: string;
+    unit: string;
+    placeholder: string;
+    min?: number;
+    max?: number;
+  }>;
 }
 
-export interface QuestionModule {
-  id: string
-  name: string
-  description: string
-  questions: Question[]
+export interface Module {
+  id: string;
+  name: string;
+  nameEn: string;
+  focus: string;
+  questions: Question[];
 }
 
-export const cyanDataQuestions: QuestionModule[] = [
+export const cyanDataModules: Module[] = [
   {
-    id: 'module1',
-    name: 'DQI',
-    description: 'Data Quality & Integrity - Data Legal Personality',
+    id: 'qualitative-assessment',
+    name: 'Qualitative Assessment',
+    nameEn: 'Compliance & Identity Management',
+    focus: 'Evaluating data lifecycle compliance and identity authentication systems',
     questions: [
       {
-        id: 'Q1',
-        text: 'Q1: Paperless Ratio - From sample collection to final COA, are multiple steps fully electronic (LIMS/ELN) with no paper records?',
+        id: 'q1',
+        moduleId: 'qualitative-assessment',
+        question: 'Q1: Data Lifecycle Compliance Management (ALCOA+ Compliance) - Evaluates whether data collection, processing, and reporting follow ALCOA+ principles (Attributable, Legible, Contemporaneous, Original, Accurate, Complete, Consistent, Enduring, Available) throughout the entire lifecycle',
         type: 'select',
-        maxScore: 10,
-        formula: 'R_dig = (N_electronic / N_total_steps) × 100%',
-        note: 'N_total_steps typically includes: sample collection, weighing, preparation, instrument transfer, data processing, review, batch release',
         options: [
-          { value: '100', label: '100%: Full electronic (Full LIMS + ELN + E-signature)', score: 10 },
-          { value: '75', label: '>80%: Instrument verified paperless, but requires printed signatures', score: 7.5 },
-          { value: '50', label: '50%-80%: Hybrid mode, key data electronized', score: 5 },
-          { value: '25', label: '<50%: Mainly paper-based records', score: 2.5 },
-          { value: '0', label: '0%: Fully manual paper records', score: 0 }
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): Fully automated electronic management system established; all data meets ALCOA+ international standards with automated verification mechanisms; strictly prevents retrospective data processing' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Majority of process meets standards, but with critical gaps (e.g., data transfer) requiring secondary manual verification; exists in a semi-manual recording to electronic record transition' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Only final report stage meets compliance requirements; intermediate process lacks data traceability or equipment preparation inconsistencies; lacks system-level integrity assurance' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): Data management is chaotic; synchronization is poor (exists as post-supplement records); definition patterns of original records (Raw Data) are ambiguous; difficult to support complete audit trail' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Completely dependent on paper quality records or uncontrolled electronic files; data can be arbitrarily modified and untraceably altered' 
+          }
         ]
       },
       {
-        id: 'Q2',
-        text: 'Q2: Audit Trail Coverage - Does the system automatically record modification history (timestamps, parameters, curve modifications, reintegration) for critical data?',
+        id: 'q2',
+        moduleId: 'qualitative-assessment',
+        question: 'Q2: User Identity Authentication & Electronic Signature System (Identity & e-Signature) - Evaluates whether system access control and electronic signatures have legal validity (reference FDA 21 CFR Part 11)',
         type: 'select',
-        maxScore: 10,
-        note: 'Based on FDA 21 CFR Part 11 compliance classification',
         options: [
-          { value: '100', label: 'Complete & mandatory audit trail: Who, When, Old Value, New Value, Reason for Modification', score: 10 },
-          { value: '75', label: 'Enabled, but modification reason is not mandatory', score: 7.5 },
-          { value: '50', label: 'Feature exists, but admin can disable or rotate logs', score: 5 },
-          { value: '0', label: 'No audit trail, or using stand-alone software with modifiable system time', score: 0 }
-        ]
-      },
-      {
-        id: 'Q3',
-        text: 'Q3: Security Level - Is your system protected by role-based access control (RBAC) preventing unauthorized operations?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Typical case evaluation method',
-        options: [
-          { value: '100', label: 'Three-level isolation (Admin/Analyst/Reviewer), independent accounts, mandatory password update', score: 10 },
-          { value: '60', label: 'Has account passwords, but shared accounts exist (e.g., everyone uses "Admin")', score: 6 },
-          { value: '30', label: 'Only system boot password, no independent software login', score: 3 },
-          { value: '0', label: 'No protection, anyone can operate', score: 0 }
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): Implements strict role-based access control (RBAC); features biometric identification or dual authentication; electronic signatures linked to actual operational bindings; tamper-proof' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Has hierarchical permission management and personal account system; supports electronic signatures but name change processes and some auxiliary operations have related contacts not fully satisfied' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Has basic account registration mechanism but actual operation may have shared account possibility; or electronic signatures are simply text marks' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): Only operates as system-level password protection; no professional software permission separation; signature names are mainly dependent on physical document seal supplementation or paper-quality seal' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Open work station; no login control; multiple persons share one anonymous account for operations' 
+          }
         ]
       }
     ]
   },
   {
-    id: 'module2',
-    name: 'Chem-S',
-    description: 'Chemometric Score - Algorithm Substitutes Chemistry',
+    id: 'quantitative-assessment',
+    name: 'Quantitative Assessment',
+    nameEn: 'Digital Transfer, Audit & Redundancy Metrics',
+    focus: 'Quantifying data integrity, audit trail vigilance, and metadata completeness with redundancy safety',
     questions: [
       {
-        id: 'Q4',
-        text: 'Q4: Algorithmic Resolution - In mass spectrometry or chromatography, are numerous interfering substances resolved through chemometric algorithms (e.g., MCR-ALS, blind source separation) rather than physical/chromatographic separation?',
-        type: 'input',
-        maxScore: 10,
-        formula: 'Score = (N_calc / N_total_analytes) × 100 + α',
-        note: 'α is a bonus coefficient. If no theoretical processing is performed before direct injection, deduct 20 points (capped at 100). Scoring criteria: 100 pts: Full spectral analysis (e.g., NIR prediction), no physical separation, complete algorithmic qualitative/quantitative; 75 pts: Partially overlapping peaks resolved via algorithms (e.g., DAD purity analysis deconvolution), avoiding mobile phase optimization; 50 pts: Simple background subtraction algorithm used; 0 pts: Must rely on complete physical baseline separation for quantification'
-      },
-      {
-        id: 'Q5',
-        text: 'Q5: Calibration Model Complexity & Intelligence - What type of calibration model is used to calculate all results?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Algorithm sophistication classification',
-        options: [
-          { value: '100', label: 'Multivariate calibration (PLS/PCR/ANN) - extracts nonlinear relationships from high-dimensional data, strong matrix effect resistance', score: 10 },
-          { value: '80', label: 'Weighted Least Squares - accounts for heteroscedasticity', score: 8 },
-          { value: '60', label: 'Linear Regression - standard external standard method', score: 6 },
-          { value: '40', label: 'Single Point calibration - precision risk', score: 4 },
-          { value: '0', label: 'Normalization (no standard sample) - reference only', score: 0 }
+        id: 'q3',
+        moduleId: 'quantitative-assessment',
+        question: 'Q3: Digital Transfer & Integrity Index - Evaluates the defense against "tampering" in data transmission through the degree of automated data direct transfer compared to manual pre-save steps',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'x',
+            label: 'x (Automated Ratio)',
+            unit: '%',
+            placeholder: 'Enter the percentage of raw data directly transferred to receiver database via instrument interface (e.g., LIMS) (0 ≤ x ≤ 100)',
+            min: 0,
+            max: 100
+          },
+          {
+            name: 'y',
+            label: 'y (Manual Intervention Steps)',
+            unit: 'steps',
+            placeholder: 'Enter the number of manual operations (calculations, format conversions, manual input steps) required during data processing and summary (0 ≤ y ≤ 10)',
+            min: 0,
+            max: 10
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Perfect: 100% automated direct transfer with zero manual intervention' },
+          { score: 60, description: 'Good: High automation with minimal manual steps' },
+          { score: 30, description: 'Fair: Moderate automation with some manual processing' },
+          { score: 0, description: 'Poor: Heavy manual intervention or low automation' }
         ]
       },
       {
-        id: 'Q6',
-        text: 'Q6: Signal Enhancement Algorithm Application - Are numerical algorithms (e.g., Savitzky-Golay, Fourier Transform) used to enhance signal-to-noise ratio, thereby reducing dependence on high-sensitivity instrument hardware?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Case evaluation',
-        options: [
-          { value: '100', label: 'Yes, algorithm-based SNR enhancement significantly reduces high-sensitivity hardware dependence (LOD >10x improvement)', score: 10 },
-          { value: '50', label: 'Yes, minor smoothing applied', score: 5 },
-          { value: '0', label: 'No, fully dependent on raw hardware signal', score: 0 }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'module3',
-    name: 'Dig-I',
-    description: 'Digitalization & Interoperability - Connectivity & Universality',
-    questions: [
-      {
-        id: 'Q7',
-        text: 'Q7: Data Format Interoperability - Does the raw data support export in non-proprietary, universally exchangeable formats?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Based on FAIR principle data readability',
-        options: [
-          { value: '100', label: 'Supports industry-standard formats (e.g., AnIML, mzML, JCAMP-DX, CSV)', score: 10 },
-          { value: '70', label: 'Exports as PDF or Excel (data points only, metadata lost)', score: 7 },
-          { value: '30', label: 'Only proprietary formats supported (e.g., .raw, .wiff), must use vendor-specific software', score: 3 },
-          { value: '0', label: 'Data encrypted or cannot be exported', score: 0 }
+        id: 'q4',
+        moduleId: 'quantitative-assessment',
+        question: 'Q4: Audit Trail Vigilance Score - Evaluates the comprehensive effectiveness of opening coverage and its sustained active verification dynamism for Audit Trail functionality',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'x',
+            label: 'x (Audit Trail Coverage)',
+            unit: '%',
+            placeholder: 'Enter the percentage of key system parameters/methods modified under actual monitoring (0 ≤ x ≤ 100)',
+            min: 0,
+            max: 100
+          },
+          {
+            name: 'y',
+            label: 'y (Review Frequency)',
+            unit: 'times/quarter',
+            placeholder: 'Enter the number of times per quarter (quarterly) quality managers formally verify and spot-check audit logs (0 ≤ y ≤ 12; if exceeding 12 times, count as 12)',
+            min: 0,
+            max: 12
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: Comprehensive audit trail coverage with frequent active verification' },
+          { score: 60, description: 'Good: Good coverage with regular reviews' },
+          { score: 30, description: 'Fair: Limited coverage or infrequent reviews' },
+          { score: 0, description: 'Poor: Minimal audit trail or no active verification' }
         ]
       },
       {
-        id: 'Q8',
-        text: 'Q8: LIMS/ERP System Integration - How are data transferred between instrument software and laboratory management systems (LIMS)?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Transfer automation level',
-        options: [
-          { value: '100', label: 'Bi-directional communication - LIMS auto-dispatches tasks, instrument auto-uploads results', score: 10 },
-          { value: '70', label: 'Uni-directional upload - Instrument auto-uploads results, but manual sequence building required', score: 7 },
-          { value: '30', label: 'Manual file export and upload (File Transfer)', score: 3 },
-          { value: '0', label: 'Manual transcription data entry - extremely high error risk', score: 0 }
-        ]
-      },
-      {
-        id: 'Q9',
-        text: 'Q9: Metadata Completeness - Do data files automatically encapsulate complete experimental context metadata (not just results, but also sample ID, operator, instrument status, time, method, operating conditions)?',
-        type: 'input',
-        maxScore: 10,
-        formula: 'Score = (N_logged / N_required) × 100',
-        note: 'N_required key fields: Time, Personnel, Machine, Material, Method, Environment. Scoring criteria: 100 pts: Fully automatic capture of all metadata (Full Context); 50 pts: Only basic acquisition time and method name, lacks instrument status details; 0 pts: Only final charts/results, all process parameters lost'
-      },
-      {
-        id: 'Q10',
-        text: 'Q10: Remote Monitoring & IoT Capability - Does this method support real-time status monitoring or fault diagnosis in non-laboratory environments?',
-        type: 'select',
-        maxScore: 10,
-        note: 'Typical case evaluation',
-        options: [
-          { value: '100', label: 'Supports mobile app real-time viewing of spectra, remaining time, and remote error alerts (multi-person notification)', score: 10 },
-          { value: '50', label: 'Only supports local network remote desktop control (Remote Desktop)', score: 5 },
-          { value: '0', label: 'Personnel must be on-site at the instrument (Stand-alone)', score: 0 }
+        id: 'q5',
+        moduleId: 'quantitative-assessment',
+        question: 'Q5: Metadata Completeness & Data Redundancy Safety (Metadata & Redundancy Index) - Evaluates the information context completeness in data backend storage and the survival capability under unexpected situations',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'x',
+            label: 'x (Key Metadata Dimensions)',
+            unit: 'dimensions',
+            placeholder: 'Enter the total number of items for "key element data" associated with a single data file (e.g., environmental temperature/humidity, pressure, flow rate, personnel information, equipment calibration status, etc.) (0 < x ≤ 10)',
+            min: 0,
+            max: 10
+          },
+          {
+            name: 'y',
+            label: 'y (Physical Redundancy Independence)',
+            unit: 'level',
+            placeholder: 'Enter the data backup physical independence indicator (defined: local device as 1, server off-site backup as 2, off-site/cloud cold backup as 3, maximum value 3)',
+            min: 1,
+            max: 3
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: Comprehensive metadata with multiple independent backup layers' },
+          { score: 60, description: 'Good: Good metadata coverage with adequate backup redundancy' },
+          { score: 30, description: 'Fair: Basic metadata with limited backup' },
+          { score: 0, description: 'Poor: Minimal metadata or insufficient backup safety' }
         ]
       }
     ]
   }
-]
+];

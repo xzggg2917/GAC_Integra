@@ -2,11 +2,18 @@ export interface Question {
   id: string;
   moduleId: string;
   question: string;
-  type: 'input' | 'select';
+  type: 'input' | 'select' | 'multi-input';
   unit?: string;
-  formula?: string;
   options?: { value: string; score: number; label: string }[];
   scoringRules?: { min?: number; max?: number; score: number; description: string }[];
+  multiInputFields?: Array<{
+    name: string;
+    label: string;
+    unit: string;
+    placeholder: string;
+    min?: number;
+    max?: number;
+  }>;
 }
 
 export interface Module {
@@ -19,159 +26,171 @@ export interface Module {
 
 export const grayIndustryModules: Module[] = [
   {
-    id: 'mass-efficiency',
-    name: 'Mass Efficiency',
-    nameEn: 'Quality and Material Efficiency',
-    focus: 'Atomic Economy, Input-Output Ratio',
+    id: 'qualitative-assessment',
+    name: 'Qualitative Assessment',
+    nameEn: 'Process & Minimization Focus',
+    focus: 'Evaluating waste control, circularity, and process integration',
     questions: [
       {
         id: 'q1',
-        moduleId: 'mass-efficiency',
-        question: 'Q1: Process Mass Intensity (PMI) - What is the ratio of total material input (reagents, solvents, auxiliaries) to product output (or sample) in a single effective analysis?',
-        type: 'input',
-        unit: 'kg/sample',
-        formula: 'PMI = Σm_input(kg) / m_sample',
-        scoringRules: [
-          { max: 0.05, score: 10, description: 'Excellent, close to red, paper-level' },
-          { min: 0.05, max: 0.2, score: 7.5, description: 'Good, slight analysis' },
-          { min: 0.2, max: 1.0, score: 5, description: 'Fair, conventional HPLC' },
-          { min: 1.0, max: 5.0, score: 2.5, description: 'Poor, large solvent consumption' },
-          { min: 5.0, score: 0, description: 'Very poor, extremely wasteful' }
+        moduleId: 'qualitative-assessment',
+        question: 'Q1: Waste & Circularity Level - Evaluates waste liquids and consumables generated during industrial scale-up, focusing on minimization and recycling potential',
+        type: 'select',
+        options: [
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): Process produces nearly zero emissions; waste can be directly converted to by-products or reused within the process' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Waste volume is extremely low, suitable for laboratory-scale models, and has established mature green disposal pathways' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Waste adheres to industrial standards, but treatment cost is higher, limiting recovery value' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): Production scale is likely to generate secondary pollutants requiring specialized treatment equipment' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Production heavily generates environmentally hazardous non-compliant waste, unqualified for industrial compatibility' 
+          }
         ]
       },
       {
         id: 'q2',
-        moduleId: 'mass-efficiency',
-        question: 'Q2: Analysis E-Factor - How much waste (liquid + solid) is generated per analysis?',
-        type: 'input',
-        unit: 'g',
-        formula: 'E = m_waste(g) / 1 sample',
-        scoringRules: [
-          { max: 10, score: 10, description: 'Excellent, direct injection, micronized' },
-          { min: 10, max: 50, score: 7.5, description: 'Good' },
-          { min: 50, max: 200, score: 5, description: 'Fair, conventional green solvent' },
-          { min: 200, max: 1000, score: 2.5, description: 'Poor' },
-          { min: 1000, score: 0, description: 'Very poor, large-scale consumption' }
-        ]
-      },
-      {
-        id: 'q3',
-        moduleId: 'mass-efficiency',
-        question: 'Q3: Auxiliary Efficiency - Are non-stoichiometric auxiliary reagents (e.g., methanol, n-hexane, diluent) used? What percentage of these non-core solvent consumptions is this?',
-        type: 'input',
-        unit: '%',
-        formula: 'R_non-value = V_auxiliary/solvent / V_total × 100%',
-        scoringRules: [
-          { max: 10, score: 10, description: 'Excellent, immediate use' },
-          { min: 10, max: 30, score: 7.5, description: 'Good' },
-          { min: 30, max: 60, score: 5, description: 'Fair, e.g., HPLC balanced duration' },
-          { min: 60, score: 0, description: 'Poor, excessive time spent on method selection, resulting in low efficiency' }
+        moduleId: 'qualitative-assessment',
+        question: 'Q2: Process Integration & Minimization - Evaluates the process capability to "generate maximum product with minimum raw materials", examining if flow is streamlined',
+        type: 'select',
+        options: [
+          { 
+            value: 'A', 
+            score: 100, 
+            label: 'A (100 pts): "One-stop" or "one-pot" process, no need for intermediate purification, raw material conversion approaches theoretical limit' 
+          },
+          { 
+            value: 'B', 
+            score: 75, 
+            label: 'B (75 pts): Highly streamlined process, eliminated unnecessary isolation steps, raw material loss is very low' 
+          },
+          { 
+            value: 'C', 
+            score: 50, 
+            label: 'C (50 pts): Standard industrial process, exists within normal range of raw material loss or a few redundant steps' 
+          },
+          { 
+            value: 'D', 
+            score: 25, 
+            label: 'D (25 pts): Complex process with moderate transfer costs and low process yield' 
+          },
+          { 
+            value: 'E', 
+            score: 0, 
+            label: 'E (0 pts): Extremely low process raw material utilization rate (<30% yield), completely unsuitable for industrial efficiency' 
+          }
         ]
       }
     ]
   },
   {
-    id: 'process-capability',
-    name: 'Process Capability',
-    nameEn: 'Process Capability and Quality Control',
-    focus: 'Long-term operational stability, suitable for GMP QC methods',
+    id: 'quantitative-assessment',
+    name: 'Quantitative Assessment',
+    nameEn: 'Efficiency & Quality Constraints',
+    focus: 'Performance metrics evaluating resource efficiency, stability, and sensitivity',
     questions: [
       {
-        id: 'q4',
-        moduleId: 'process-capability',
-        question: 'Q4: Process Capability Index (Cpk) - In long-term stable operation of the method, how many σ can the Cpk value reach? (Or the probability of falling within specification)',
-        type: 'input',
-        unit: '',
-        formula: 'Cpk = min(USL-μ/3σ, μ-LSL/3σ)',
+        id: 'q3',
+        moduleId: 'quantitative-assessment',
+        question: 'Q3: Resource-Accuracy Efficiency Index - Evaluates the capability to achieve compliant accuracy output with minimum raw material input',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'Y',
+            label: 'Y (Input-Output Ratio)',
+            unit: 'ratio',
+            placeholder: 'Enter the mass ratio of all raw materials to valid target analyte output (0-1)',
+            min: 0,
+            max: 1
+          },
+          {
+            name: 'A',
+            label: 'A (Accuracy Deviation)',
+            unit: 'value',
+            placeholder: 'Enter |1 - Recovery Rate|. When deviation exceeds 15%, exponential penalty applies',
+            min: 0,
+            max: 1
+          }
+        ],
         scoringRules: [
-          { min: 1.67, score: 10, description: 'Excellent, 6σ level' },
-          { min: 1.33, max: 1.67, score: 7.5, description: 'Good, qualified, industrial standard' },
-          { min: 1.0, max: 1.33, score: 5, description: 'Fair' },
-          { max: 1.0, score: 0, description: 'Poor, out of specification, system requires major overhaul OOS adjustment' }
+          { score: 100, description: 'Perfect: Zero waste with 100% recovery rate (theoretical maximum)' },
+          { score: 60, description: 'Good: Low input-output ratio with high accuracy' },
+          { score: 30, description: 'Fair: Moderate efficiency with acceptable accuracy' },
+          { score: 0, description: 'Poor: High waste generation or poor accuracy' }
+        ]
+      },
+      {
+        id: 'q4',
+        moduleId: 'quantitative-assessment',
+        question: 'Q4: Scale-In Technical Stability Index (SITSI) - Evaluates the method\'s ability to maintain data precision (batch stability) while pursuing industrial output scale (throughput)',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'P',
+            label: 'P (Process Throughput)',
+            unit: 'samples/hour',
+            placeholder: 'Enter the minimum number of samples processed per hour under industrial environment',
+            min: 0
+          },
+          {
+            name: 'R',
+            label: 'R (Industrial Precision Fluctuation)',
+            unit: 'decimal',
+            placeholder: 'Enter the inter-batch RSD as decimal (e.g., 0.012 for 1.2%)',
+            min: 0,
+            max: 1
+          }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: High throughput with minimal precision fluctuation' },
+          { score: 60, description: 'Good: Balanced throughput and stability' },
+          { score: 30, description: 'Fair: Either low throughput or unstable precision' },
+          { score: 0, description: 'Poor: Low throughput with high variability' }
         ]
       },
       {
         id: 'q5',
-        moduleId: 'process-capability',
-        question: 'Q5: Right First Time (RFT) - In production, due to method reasons (human/sample reasons) leading to re-testing (Re-test Rate), how much is it?',
-        type: 'input',
-        unit: '%',
-        formula: 'R_retest = N_retest/N_total × 100%',
+        moduleId: 'quantitative-assessment',
+        question: 'Q5: Minimization-Sensitivity Gain - Evaluates the degree to which sensitivity is retained while reducing raw material and solvent consumption (minimization)',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'wasteRatio',
+            label: 'M_waste / M_total (Waste Ratio)',
+            unit: 'ratio',
+            placeholder: 'Enter the mass ratio of waste materials to total input materials in production',
+            min: 0,
+            max: 1
+          },
+          {
+            name: 'S',
+            label: 'S (Sensitivity Compliance Ratio)',
+            unit: 'ratio',
+            placeholder: 'Enter the ratio of actual detection limit to laboratory standard limit. Closer to 1 scores higher; minimized process with wider margin scores lower',
+            min: 0
+          }
+        ],
         scoringRules: [
-          { max: 1, score: 10, description: 'Excellent, minimal loss' },
-          { min: 1, max: 5, score: 7.5, description: 'Good' },
-          { min: 5, max: 10, score: 5, description: 'Fair' },
-          { min: 10, score: 0, description: 'Poor, method unstable, frequent re-testing without cause' }
-        ]
-      },
-      {
-        id: 'q6',
-        moduleId: 'process-capability',
-        question: 'Q6: System Suitability Test (SST) Failure Rate - During formal batch testing, what is the SST failure rate (excluding component not detected, caused by column issues)?',
-        type: 'select',
-        options: [
-          { value: 'low', score: 10, label: 'Low (<1% per year), highly stable' },
-          { value: 'occasional', score: 7.5, label: 'Occasional (annual rate <2%), appropriate direct calibration dynamic range' },
-          { value: 'monthly', score: 3, label: 'Monthly (monthly), requires investigation of replacement columns' },
-          { value: 'unstable', score: 0, label: 'Unstable, frequent "shutdowns"' }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'lean-operations',
-    name: 'Lean Operations',
-    nameEn: 'Lean Operations and Logistics',
-    focus: 'Time-space cost, spatial cost, waste classification efficiency',
-    questions: [
-      {
-        id: 'q7',
-        moduleId: 'lean-operations',
-        question: 'Q7: Solution Stability and Operation Window - How long is the stable time window for sample and reagent solution preparation to automatic injection completion?',
-        type: 'input',
-        unit: 'hours',
-        scoringRules: [
-          { min: 48, score: 10, description: 'Excellent, almost no human intervention' },
-          { min: 24, max: 48, score: 7.5, description: 'Good, supports overnight operation' },
-          { min: 8, max: 24, score: 5, description: 'Fair, same-day completion' },
-          { max: 4, score: 0, description: 'Poor, immediate measurement, not suitable for large-batch sequencing' }
-        ]
-      },
-      {
-        id: 'q8',
-        moduleId: 'lean-operations',
-        question: 'Q8: Changeover Efficiency (SMED) - When switching between methods, from one method (e.g., machine start) to the average time of the next method ready for sample injection, how long?',
-        type: 'input',
-        unit: 'minutes',
-        scoringRules: [
-          { max: 10, score: 10, description: 'Excellent, instant start, e.g., UVIR' },
-          { min: 10, max: 30, score: 7.5, description: 'Good' },
-          { min: 30, max: 60, score: 5, description: 'Fair, conventional HPLC balance' },
-          { min: 120, score: 0, description: 'Poor, long baseline or fixed detector re-extraction waiting time' }
-        ]
-      },
-      {
-        id: 'q9',
-        moduleId: 'lean-operations',
-        question: 'Q9: Space-Time Yield - Per unit laboratory space-time sample output?',
-        type: 'select',
-        options: [
-          { value: 'high', score: 10, label: 'High (e.g., multi-channel microplate reader, small footprint)' },
-          { value: 'medium', score: 7.5, label: 'Medium (UPLC, relatively fast run)' },
-          { value: 'fair', score: 5, label: 'Fair (conventional HPLC)' },
-          { value: 'low', score: 0, label: 'Low (e.g., large floor area, occupied large and time-consuming)' }
-        ]
-      },
-      {
-        id: 'q10',
-        moduleId: 'lean-operations',
-        question: 'Q10: Waste Segregation Contribution - Do the waste products of the method have clear classification value after analysis (e.g., chemical recycling or direct discharge)?',
-        type: 'select',
-        options: [
-          { value: 'recyclable', score: 10, label: 'Single - recyclable, or directly discharged' },
-          { value: 'pre-separation', score: 7.5, label: 'Conventional pre-/post-separation' },
-          { value: 'mixed', score: 5, label: 'Simply mixed and sent to qualified disposal' },
-          { value: 'hazardous', score: 0, label: 'All produced as hazardous waste (e.g., biohazard, special disposal required)' }
+          { score: 100, description: 'Excellent: Minimal waste with maintained or enhanced sensitivity' },
+          { score: 60, description: 'Good: Reduced waste with acceptable sensitivity trade-off' },
+          { score: 30, description: 'Fair: Moderate waste reduction with sensitivity compromise' },
+          { score: 0, description: 'Poor: Significant waste or major sensitivity loss' }
         ]
       }
     ]
