@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { whiteCompletenessModules } from '../data/whiteCompletenessQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
-import MultiSelectDropdown from './MultiSelectDropdown'
 import './QuestionPage.css'
 
 interface QuestionPageWhiteProps {
@@ -10,20 +9,14 @@ interface QuestionPageWhiteProps {
 }
 
 const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('white-completeness')
-    const parsedAnswers: { [key: string]: string | string[] } = {}
-    Object.entries(savedAnswers).forEach(([key, val]) => {
-      try {
-        const parsed = JSON.parse(val)
-        parsedAnswers[key] = Array.isArray(parsed) ? parsed : val
-      } catch {
-        parsedAnswers[key] = val
-      }
-    })
-    return parsedAnswers
-  })
+  const { setScore, getAnswers, setQuestionWeights, getQuestionWeights, saveAnswers, getCurrentFilePath, isLoading } = useDimension()
+  const hasLoadedFromContext = useRef(false)
+  const lastScoreRef = useRef<number>(0)
+  const isInitialLoadComplete = useRef(false)
+  const cachedFilePathRef = useRef<string | null>(null)
+  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({})
+  
+  const { ipcRenderer } = window.require('electron')
   
   // 初始化权重 - 如果没有保存的权重，平均分配
   const allQuestions = whiteCompletenessModules.flatMap(m => m.questions)
@@ -49,37 +42,45 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
 
     if (!question) return 0
 
-    // Handle multi-input questions (Q4, Q5)
+    if (question.type === 'select') {
+      const option = question.options?.find(opt => opt.value === answer)
+      return option?.score || 0
+    }
+
     if (question.type === 'multi-input' && typeof answer === 'string') {
       try {
         const data = JSON.parse(answer || '{}')
         
-        // Q4: Precision-Accuracy Collaborative Index (PACI)
-        if (questionId === 'q4') {
-          const recovery = parseFloat(data.recovery || '0')
-          const rsd = parseFloat(data.rsd || '0')
-          // 只有当有有效输入时才计算
-          if (data.recovery === '' || data.recovery === undefined) return 0
-          if (!isNaN(recovery) && !isNaN(rsd) && recovery > 0 && rsd >= 0) {
-            const accuracyTerm = Math.exp(-0.5 * Math.pow((recovery - 100) / 3, 2))
-            const precisionTerm = 1 / (1 + Math.pow(rsd / 2.5, 2))
-            return 100 * accuracyTerm * precisionTerm
-          }
+        // Q3: Parameter Purity Index (PPI)
+        // Formula: S1 = 100 × P/(P + 1.3·E^0.1)
+        if (questionId === 'q3') {
+          const P = parseFloat(data.P)
+          const E = parseFloat(data.E)
+          if (isNaN(P) || isNaN(E)) return 0
+          
+          const score = 100 * P / (P + 1.3 * Math.pow(E, 0.1))
+          return Math.max(0, Math.min(100, score))
         }
         
-        // Q5: Sensitivity-Linearity Fidelity Score (SLFS)
+        // Q4: Trend Alignment Modulus (TAM)
+        // Formula: S2 = 100 × exp(-0.89·|Ratio-1|^0.25)
+        if (questionId === 'q4') {
+          const Ratio = parseFloat(data.Ratio)
+          if (isNaN(Ratio)) return 0
+          
+          const score = 100 * Math.exp(-0.89 * Math.pow(Math.abs(Ratio - 1), 0.25))
+          return Math.max(0, Math.min(100, score))
+        }
+        
+        // Q5: Logic Density Ratio (LDR)
+        // Formula: S3 = 100 × L^0.5/(L^0.5 + 0.2·A^1.4)
         if (questionId === 'q5') {
-          const r2 = parseFloat(data.r2 || '0')
-          const lod = parseFloat(data.lod || '0')
-          const creq = parseFloat(data.creq || '1')
-          // 只有当有有效输入时才计算
-          if (data.r2 === '' || data.r2 === undefined) return 0
-          if (!isNaN(r2) && !isNaN(lod) && !isNaN(creq) && r2 >= 0.99 && r2 <= 1.0 && lod >= 0 && creq > 0) {
-            const linearityTerm = Math.pow((r2 - 0.99) / 0.0099, 4)
-            const sensitivityTerm = Math.cos((Math.PI / 2) * (lod / creq))
-            const score = 100 * linearityTerm * sensitivityTerm
-            return Math.max(0, score) // 若计算结果<0则计为0
-          }
+          const L = parseFloat(data.L)
+          const A = parseFloat(data.A)
+          if (isNaN(L) || isNaN(A)) return 0
+          
+          const score = 100 * Math.pow(L, 0.5) / (Math.pow(L, 0.5) + 0.2 * Math.pow(A, 1.4))
+          return Math.max(0, Math.min(100, score))
         }
         
         return 0
@@ -93,117 +94,148 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
       return option?.score || 0
     }
 
-    if (question.type === 'checkbox' && Array.isArray(answer)) {
-      const totalDeduction = answer.reduce((sum, val) => {
-        const option = question.options?.find(opt => opt.value === val)
-        return sum + (option?.score || 0)
-      }, 0)
-      const score = 100 - totalDeduction
-      return Math.max(0, Math.min(10, score / 10))
-    }
-
-    if (question.type === 'input' && question.scoringRules) {
-      const value = parseFloat(answer as string)
-      if (isNaN(value)) return 0
-
-      for (const rule of question.scoringRules) {
-        const minMatch = rule.min === undefined || value >= rule.min
-        const maxMatch = rule.max === undefined || value < rule.max
-        if (minMatch && maxMatch) {
-          return rule.score
-        }
-      }
-    }
-
     return 0
   }
 
-  // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialScores: { [key: string]: number } = {}
+    if (isLoading) return
     
-    allQuestions.forEach(question => {
-      const rawScore = calculateQuestionScore(question.id, answers[question.id] || (question.type === 'checkbox' ? [] : ''))
-      initialScores[question.id] = rawScore
-    })
-    
-    setQuestionScores(initialScores)
-    
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const rawScore = initialScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (rawScore * weight / 100)
-    }, 0)
-    
-    setScore('white-completeness', totalWeightedScore)
-  }, []) // Run only once on mount
+    if (!hasLoadedFromContext.current) {
+      hasLoadedFromContext.current = true
+      cachedFilePathRef.current = getCurrentFilePath()
+      
+      // 加载保存的权重
+      const savedWeights = getQuestionWeights('white-completeness')
+      if (Object.keys(savedWeights).length > 0) {
+        setWeights(savedWeights)
+      }
+      
+      const savedAnswers = getAnswers('white-completeness')
+      if (Object.keys(savedAnswers).length > 0) {
+        const parsedAnswers: { [key: string]: string | string[] } = {}
+        Object.entries(savedAnswers).forEach(([key, val]) => {
+          try {
+            const parsed = JSON.parse(val)
+            parsedAnswers[key] = parsed
+          } catch {
+            parsedAnswers[key] = val
+          }
+        })
+        setAnswers(parsedAnswers)
+        
+        const scores: { [key: string]: number } = {}
+        Object.entries(parsedAnswers).forEach(([qId, ans]) => {
+          // 如果答案是对象或数组，需要转回JSON字符串给calculateQuestionScore
+          const answerForCalculation = (typeof ans === 'object') ? JSON.stringify(ans) : ans
+          scores[qId] = calculateQuestionScore(qId, answerForCalculation)
+          console.log(`[QuestionPageWhite] Question ${qId} score:`, scores[qId], 'answer:', ans)
+        })
+        setQuestionScores(scores)
+        
+        setTimeout(() => {
+          const currentWeights = Object.keys(savedWeights).length > 0 ? savedWeights : weights
+          const total = allQuestions.reduce((sum, q) => {
+            const score = scores[q.id] || 0
+            const weight = currentWeights[q.id] || 0
+            return sum + (score * weight / 100)
+          }, 0)
+          lastScoreRef.current = total
+          setScore('white-completeness', total)
+          isInitialLoadComplete.current = true
+        }, 0)
+      } else {
+        isInitialLoadComplete.current = true
+      }
+    }
+  }, [isLoading])
 
-  const handleAnswerChange = (questionId: string, value: string | string[]) => {
-    const newAnswers = { ...answers, [questionId]: value }
-    setAnswers(newAnswers)
-    const storageAnswers: { [key: string]: string } = {}
-    Object.entries(newAnswers).forEach(([key, val]) => {
-      storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
-    })
-    saveAnswers('white-completeness', storageAnswers)
-
-    // 计算新的分数
-    const rawScore = calculateQuestionScore(questionId, value)
-    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
-    setQuestionScores(newQuestionScores)
-
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = newQuestionScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (score * weight / 100)
-    }, 0)
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) return
     
-    setScore('white-completeness', totalWeightedScore)
-  }
-
-  const handleWeightChange = (questionId: string, newWeight: number) => {
-    const newWeights = { ...weights, [questionId]: newWeight }
-    setWeights(newWeights)
-    setQuestionWeights('white-completeness', newWeights)
-    
-    // 重新计算加权总分
     const totalWeightedScore = allQuestions.reduce((sum, q) => {
       const score = questionScores[q.id] || 0
-      const weight = newWeights[q.id] || 0
+      const weight = weights[q.id] || 0
       return sum + (score * weight / 100)
     }, 0)
     
-    setScore('white-completeness', totalWeightedScore)
-  }
-
-  const normalizeWeights = () => {
-    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
-    if (currentTotal === 0) {
-      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
-      })
-      setWeights(newWeights)
-      setQuestionWeights('white-completeness', newWeights)
-    } else {
-      const factor = 100 / currentTotal
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
-      })
-      setWeights(newWeights)
-      setQuestionWeights('white-completeness', newWeights)
-      const totalWeightedScore = allQuestions.reduce((sum, q) => {
-        const score = questionScores[q.id] || 0
-        const weight = newWeights[q.id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
+    if (Math.abs(totalWeightedScore - lastScoreRef.current) > 0.01) {
+      lastScoreRef.current = totalWeightedScore
       setScore('white-completeness', totalWeightedScore)
     }
-  }
+  }, [questionScores, weights])
+
+  useEffect(() => {
+    if (!isInitialLoadComplete.current || Object.keys(answers).length === 0) return
+    
+    const saveToFile = async () => {
+      try {
+        const storageAnswers: { [key: string]: string } = {}
+        Object.entries(answers).forEach(([key, val]) => {
+          storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
+        })
+        
+        // 同时更新Context
+        saveAnswers('white-completeness', storageAnswers)
+        setQuestionWeights('white-completeness', weights)
+        
+        await ipcRenderer.invoke('save-to-file', {
+          dimension: 'white-completeness',
+          data: {
+            answers: storageAnswers,
+            questionWeights: weights,
+            questionScores: questionScores,
+            score: lastScoreRef.current
+          }
+        })
+      } catch (error) {
+        console.error('[QuestionPageWhite] Failed to save:', error)
+      }
+    }
+    
+    const timer = setTimeout(saveToFile, 500)
+    return () => clearTimeout(timer)
+  }, [answers, weights, questionScores])
+
+  const handleAnswerChange = React.useCallback((questionId: string, value: string | string[]) => {
+    console.log('[QuestionPageWhite] handleAnswerChange:', { questionId, value })
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionId]: value
+    }))
+    
+    const rawScore = calculateQuestionScore(questionId, value)
+    console.log('[QuestionPageWhite] Score calculated:', { questionId, rawScore })
+    setQuestionScores(prevScores => ({
+      ...prevScores,
+      [questionId]: rawScore
+    }))
+  }, [])
+
+  const handleWeightChange = React.useCallback((questionId: string, newWeight: number) => {
+    setWeights(prevWeights => ({
+      ...prevWeights,
+      [questionId]: newWeight
+    }))
+  }, [])
+
+  const normalizeWeights = React.useCallback(() => {
+    setWeights(() => {
+      const newWeights: { [key: string]: number } = {}
+      const baseWeight = Math.floor(10000 / allQuestions.length) / 100
+      let sum = 0
+      
+      allQuestions.forEach((q, index) => {
+        if (index < allQuestions.length - 1) {
+          newWeights[q.id] = baseWeight
+          sum += baseWeight
+        } else {
+          newWeights[q.id] = parseFloat((100 - sum).toFixed(2))
+        }
+      })
+      
+      return newWeights
+    })
+  }, [])
 
   const totalWeightedScore = allQuestions.reduce((sum, q) => {
     const score = questionScores[q.id] || 0
@@ -247,8 +279,12 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
                     <div className="multi-input-container">
                       {question.multiInputFields.map((field) => {
                         const currentData = (() => {
+                          const answer = answers[question.id]
+                          if (typeof answer === 'object' && !Array.isArray(answer)) {
+                            return answer
+                          }
                           try {
-                            return JSON.parse((answers[question.id] as string) || '{}')
+                            return JSON.parse((answer as string) || '{}')
                           } catch {
                             return {}
                           }
@@ -262,8 +298,19 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
                                 type="number"
                                 value={currentData[field.name] || ''}
                                 onChange={(e) => {
-                                  const newData = { ...currentData, [field.name]: e.target.value }
-                                  handleAnswerChange(question.id, JSON.stringify(newData))
+                                  const answer = answers[question.id]
+                                  let data: any = {}
+                                  if (typeof answer === 'object' && !Array.isArray(answer)) {
+                                    data = { ...(answer as any) }
+                                  } else {
+                                    try {
+                                      data = JSON.parse((answer as string) || '{}')
+                                    } catch {
+                                      data = {}
+                                    }
+                                  }
+                                  data[field.name] = e.target.value
+                                  handleAnswerChange(question.id, JSON.stringify(data))
                                 }}
                                 onWheel={(e) => e.currentTarget.blur()}
                                 onKeyDown={(e) => {
@@ -313,19 +360,10 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
                       <option value="">-- Select an option --</option>
                       {question.options?.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label}
+                          {option.label} ({option.score} points)
                         </option>
                       ))}
                     </select>
-                  )}
-
-                  {question.type === 'checkbox' && (
-                    <MultiSelectDropdown
-                      options={question.options || []}
-                      selectedValues={(answers[question.id] as string[]) || []}
-                      onChange={(values) => handleAnswerChange(question.id, values)}
-                      placeholder="-- Select conditions (multiple) --"
-                    />
                   )}
 
                 </div>
@@ -421,4 +459,4 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageWhite
+export default React.memo(QuestionPageWhite)

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { useDimension } from '../context/DimensionContext'
 import { dimensions } from '../data/algorithms'
@@ -17,9 +17,26 @@ interface VisualizationPageProps {
 }
 
 const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
-  const { selectedDimensions, getTotalScore, scores, allAnswers } = useDimension()
+  const { selectedDimensions, getTotalScore, scores, allAnswers, getQuestionWeights } = useDimension()
   const [viewMode, setViewMode] = useState<'treemap' | 'sunburst'>('treemap')
   const [showTextReport, setShowTextReport] = useState(false)
+  const chartRef = useRef<any>(null)
+
+  // Cleanup chart instance on unmount
+  useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        const echartsInstance = chartRef.current.getEchartsInstance()
+        if (echartsInstance && typeof echartsInstance.dispose === 'function') {
+          try {
+            echartsInstance.dispose()
+          } catch (error) {
+            // Silently ignore disposal errors
+          }
+        }
+      }
+    }
+  }, [])
 
   // Convert dimension data to chart format
   const chartData = useMemo(() => {
@@ -34,13 +51,13 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       'violet-innovation': violetInnovationModules
     }
 
-    // Helper function to calculate question score
-    const calculateQuestionScore = (question: any, answer: any): number => {
+    // Helper function to calculate question score (now returns 0-100 scale)
+    const calculateQuestionScore = (question: any, answer: any, dimId: string, questionId: string): number => {
       if (!answer) return 0
 
-      // Parse JSON strings for checkbox answers
+      // Parse JSON strings
       let parsedAnswer = answer
-      if (typeof answer === 'string' && answer.startsWith('[')) {
+      if (typeof answer === 'string' && (answer.startsWith('[') || answer.startsWith('{'))) {
         try {
           parsedAnswer = JSON.parse(answer)
         } catch (e) {
@@ -51,6 +68,213 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       if (question.type === 'select') {
         const selectedOption = question.options?.find((opt: any) => opt.value === parsedAnswer)
         return selectedOption?.score || 0
+      }
+
+      // Handle multi-reagent type (Green Ecology Q3)
+      if (question.type === 'multi-reagent' && typeof parsedAnswer === 'string') {
+        try {
+          const reagents = JSON.parse(parsedAnswer || '[]')
+          if (!Array.isArray(reagents) || reagents.length === 0) return 0
+          
+          let sum = 0
+          let hasValidInput = false
+          for (const reagent of reagents) {
+            const mass = parseFloat(reagent.mass || '0')
+            const hcodes = parseFloat(reagent.hcodes || '0')
+            if (!isNaN(mass) && !isNaN(hcodes) && mass >= 0 && hcodes >= 0) {
+              if (mass > 0 || hcodes > 0) hasValidInput = true
+              sum += mass * Math.pow(hcodes, 2)
+            }
+          }
+          if (!hasValidInput) return 0
+          return 100 * Math.exp(-1.5 * Math.sqrt(sum))
+        } catch {
+          return 0
+        }
+      }
+
+      if (question.type === 'multi-input' && typeof parsedAnswer === 'object') {
+        try {
+          // Green Ecology (Dimension 1)
+          if (dimId === 'green-ecology') {
+            if (questionId === 'q4') {
+              const tbp = parseFloat(parsedAnswer.tbp)
+              const nhalogen = parseFloat(parsedAnswer.nhalogen)
+              const nh = parseFloat(parsedAnswer.nh)
+              if (!isNaN(tbp) && !isNaN(nhalogen) && !isNaN(nh)) {
+                const sigmoid = 1 / (1 + Math.exp(-0.05 * (tbp - 50)))
+                const penalty = Math.exp(-(2 * nhalogen + 0.5 * nh) / 5)
+                return 100 * sigmoid * penalty
+              }
+            }
+            if (questionId === 'q5') {
+              const power = parseFloat(parsedAnswer.power)
+              const time = parseFloat(parsedAnswer.time)
+              const throughput = parseFloat(parsedAnswer.throughput)
+              if (!isNaN(power) && !isNaN(time) && !isNaN(throughput) && throughput > 0) {
+                return 100 * Math.exp(-(power * time) / (10000 * throughput))
+              }
+            }
+            if (questionId === 'q6') {
+              const vwaste = parseFloat(parsedAnswer.vwaste)
+              const eta = parseFloat(parsedAnswer.eta)
+              if (!isNaN(vwaste) && !isNaN(eta) && vwaste >= 0 && eta >= 0 && eta <= 1) {
+                const term1 = 1 / (1 + 0.05 * Math.pow(vwaste * (1 - eta), 1.2))
+                const term2 = Math.exp(-vwaste / 200)
+                return 100 * term1 * term2
+              }
+            }
+          }
+          
+          // Blue Practicality (Dimension 2)
+          if (dimId === 'blue-practicality') {
+            if (questionId === 'q3') {
+              const cost = parseFloat(parsedAnswer.cost)
+              const time = parseFloat(parsedAnswer.time)
+              if (!isNaN(cost) && !isNaN(time) && cost >= 0 && time >= 0) {
+                const numerator = (cost + 20 * time) / 15
+                return 100 / (1 + Math.pow(numerator, 2.5))
+              }
+            }
+            if (questionId === 'q4') {
+              const runtime = parseFloat(parsedAnswer.runtime)
+              const analytes = parseFloat(parsedAnswer.analytes)
+              if (!isNaN(runtime) && !isNaN(analytes) && runtime >= 0 && analytes > 0) {
+                const ratio = runtime / analytes
+                return 100 / (1 + 0.01 * Math.pow(ratio, 4.5))
+              }
+            }
+            if (questionId === 'q5') {
+              const analytes = parseFloat(parsedAnswer.analytes)
+              const volume = parseFloat(parsedAnswer.volume)
+              if (!isNaN(analytes) && !isNaN(volume) && analytes > 0 && volume >= 0) {
+                const nSquared = Math.pow(analytes, 2)
+                const denominator = nSquared + Math.log(1 + volume)
+                return 100 * nSquared / denominator
+              }
+            }
+          }
+          
+          // Gray Industry (Dimension 5)
+          if (dimId === 'gray-industry') {
+            if (questionId === 'q3') {
+              const Y = parseFloat(parsedAnswer.Y)
+              const A = parseFloat(parsedAnswer.A)
+              if (isNaN(Y) || isNaN(A)) return 0
+              const sigmoid = 1 / (1 + Math.exp(-12 * (Y - 0.4)))
+              const accuracyPenalty = Math.exp(-20 * A * A)
+              return 100 * sigmoid * accuracyPenalty
+            }
+            if (questionId === 'q4') {
+              const P = parseFloat(parsedAnswer.P)
+              const R = parseFloat(parsedAnswer.R)
+              if (isNaN(P) || isNaN(R)) return 0
+              const throughputFactor = (P * P) / (P * P + 65)
+              const precisionPenalty = Math.exp(-30 * Math.pow(R, 1.5))
+              return 100 * throughputFactor * precisionPenalty
+            }
+            if (questionId === 'q5') {
+              const wasteRatio = parseFloat(parsedAnswer.wasteRatio)
+              const S = parseFloat(parsedAnswer.S)
+              if (isNaN(wasteRatio) || isNaN(S)) return 0
+              const minimizationFactor = 1 - wasteRatio
+              const sensitivityFactor = 2 / (1 + S * S)
+              return 100 * minimizationFactor * sensitivityFactor
+            }
+          }
+          
+          // Yellow Society (Dimension 6)
+          if (dimId === 'yellow-society') {
+            if (questionId === 'q3') {
+              const H = parseFloat(parsedAnswer.H)
+              const t = parseFloat(parsedAnswer.t)
+              if (isNaN(H) || isNaN(t)) return 0
+              return 100 * Math.exp(-(H * Math.sqrt(t)) / 40)
+            }
+            if (questionId === 'q4') {
+              const N = parseFloat(parsedAnswer.N)
+              const F = parseFloat(parsedAnswer.F)
+              if (isNaN(N) || isNaN(F)) return 0
+              return 100 * Math.pow(N, 4) / (Math.pow(N, 4) + F)
+            }
+            if (questionId === 'q5') {
+              const T_op = parseFloat(parsedAnswer.T_op)
+              const deltaT = parseFloat(parsedAnswer.deltaT)
+              if (isNaN(T_op) || isNaN(deltaT)) return 0
+              if (deltaT <= 35) return 0
+              return 100 * Math.exp(-0.1 * Math.pow(T_op / (deltaT - 35), 2))
+            }
+          }
+          
+          // Cyan Data (Dimension 7)
+          if (dimId === 'cyan-data') {
+            if (questionId === 'q3') {
+              const x = parseFloat(parsedAnswer.x)
+              const y = parseFloat(parsedAnswer.y)
+              if (isNaN(x) || isNaN(y)) return 0
+              return 100 * Math.pow(x / 100, 1.5) * Math.exp(-(y * y) / 40)
+            }
+            if (questionId === 'q4') {
+              const x = parseFloat(parsedAnswer.x)
+              const y = parseFloat(parsedAnswer.y)
+              if (isNaN(x) || isNaN(y)) return 0
+              return 100 * Math.sin((Math.PI * x) / 200) * (Math.log(1 + y) / Math.log(13))
+            }
+            if (questionId === 'q5') {
+              const x = parseFloat(parsedAnswer.x)
+              const y = parseFloat(parsedAnswer.y)
+              if (isNaN(x) || isNaN(y)) return 0
+              return 100 * (Math.sqrt(x - 10) / 10) * (1 - Math.pow(0.5, y)) * 1.143
+            }
+          }
+          
+          // Orange Circular (Dimension 8)
+          if (dimId === 'orange-circular') {
+            if (questionId === 'q3') {
+              const R = parseFloat(parsedAnswer.R)
+              const N = parseFloat(parsedAnswer.N)
+              if (isNaN(R) || isNaN(N)) return 0
+              return 65 * Math.tanh(1.0 * R * Math.log(N + 10)) + 25
+            }
+            if (questionId === 'q4') {
+              const Fb = parseFloat(parsedAnswer.Fb)
+              const Tr = parseFloat(parsedAnswer.Tr)
+              if (isNaN(Fb) || isNaN(Tr)) return 0
+              return (25 + 60 * Math.sqrt(Fb)) * Math.exp(-0.005 * (Tr - 1))
+            }
+            if (questionId === 'q5') {
+              const D28 = parseFloat(parsedAnswer.D28)
+              const Hlife = parseFloat(parsedAnswer.Hlife)
+              if (isNaN(D28) || isNaN(Hlife)) return 0
+              return 60 * Math.sqrt((D28 / 100) * (1 - Hlife / (Hlife + 100))) + 30
+            }
+          }
+          
+          // White Completeness (Dimension 9)
+          if (dimId === 'white-completeness') {
+            if (questionId === 'q3') {
+              const P = parseFloat(parsedAnswer.P)
+              const E = parseFloat(parsedAnswer.E)
+              if (isNaN(P) || isNaN(E)) return 0
+              return 100 * P / (P + 1.3 * Math.pow(E, 0.1))
+            }
+            if (questionId === 'q4') {
+              const Ratio = parseFloat(parsedAnswer.Ratio)
+              if (isNaN(Ratio)) return 0
+              return 100 * Math.exp(-0.89 * Math.pow(Math.abs(Ratio - 1), 0.25))
+            }
+            if (questionId === 'q5') {
+              const L = parseFloat(parsedAnswer.L)
+              const A = parseFloat(parsedAnswer.A)
+              if (isNaN(L) || isNaN(A)) return 0
+              return 100 * Math.pow(L, 0.5) / (Math.pow(L, 0.5) + 0.2 * Math.pow(A, 1.4))
+            }
+          }
+          
+          return 0
+        } catch {
+          return 0
+        }
       }
 
       if (question.type === 'input' && question.scoringRules) {
@@ -66,13 +290,6 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         }
       }
 
-      if (question.type === 'checkbox' && Array.isArray(parsedAnswer)) {
-        return parsedAnswer.reduce((sum: number, val: string) => {
-          const opt = question.options?.find((o: any) => o.value === val)
-          return sum + (opt?.score || 0)
-        }, 0)
-      }
-
       return 0
     }
 
@@ -80,6 +297,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       const dimension = dimensions.find(d => d.id === dimId)
       const score = scores[dimId] || 0
       const answers = allAnswers[dimId] || {}
+      const weights = getQuestionWeights(dimId)
       
       // Get questions for this dimension
       const modules = allModules[dimId as keyof typeof allModules]
@@ -89,8 +307,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       const questionChildren = allQuestions.map((question: any, qIndex: number) => {
         let answer = answers[question.id]
         
-        // Parse JSON strings (for checkbox answers)
-        if (typeof answer === 'string' && answer.startsWith('[')) {
+        // Parse JSON strings
+        if (typeof answer === 'string' && (answer.startsWith('[') || answer.startsWith('{'))) {
           try {
             answer = JSON.parse(answer)
           } catch (e) {
@@ -98,20 +316,30 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           }
         }
         
-        const questionScore = calculateQuestionScore(question, answer)
+        const questionScore = calculateQuestionScore(question, answer, dimId, question.id)
+        const questionWeight = weights[question.id] || (100 / allQuestions.length)
         
         // Format answer for display
         let answerDisplay = 'Not answered'
         if (answer !== undefined && answer !== null && answer !== '') {
           if (Array.isArray(answer)) {
             answerDisplay = answer.length > 0 ? answer.join(', ') : 'Not answered'
+          } else if (typeof answer === 'object') {
+            // Format object answers (e.g., multi-input fields)
+            const entries = Object.entries(answer)
+            if (entries.length > 0) {
+              answerDisplay = entries.map(([key, value]) => `${key}: ${value}`).join(', ')
+            } else {
+              answerDisplay = 'Not answered'
+            }
           } else {
             answerDisplay = String(answer)
           }
         }
 
-        // Calculate color based on question score
-        const questionColor = getScoreColor(questionScore, 10)
+        // Calculate color based on question score (0-100 scale)
+        const questionColor = getScoreColor(questionScore, 100)
+        const weightedScore = (questionScore * questionWeight) / 100
 
         // Handle both data structures: 'question' field (standard) and 'text' field (cyan-data)
         const questionText = question.question || question.text || ''
@@ -119,7 +347,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
 
         return {
           name: questionId,
-          value: 1, // Use fixed value for even distribution in sunburst
+          value: questionWeight, // Use weight for proportional size
           itemStyle: {
             color: questionColor
           },
@@ -127,23 +355,27 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           questionText: questionText,
           answerText: answerDisplay,
           actualScore: questionScore,
+          questionWeight: questionWeight,
+          weightedScore: weightedScore,
           questionIndex: qIndex // Add index to prevent overlap
         }
       })
 
-      // Calculate color based on dimension total score
-      const maxDimensionScore = allQuestions.length * 10
-      const dimensionColor = getScoreColor(score, maxDimensionScore)
+      // Calculate color based on dimension total score (now 0-100 scale)
+      const dimensionColor = getScoreColor(score, 100)
+
+      // Calculate total weight sum for this dimension (should be 100)
+      const totalWeight = questionChildren.reduce((sum, child) => sum + child.value, 0)
 
       return {
         name: dimension?.name || dimId,
-        value: questionChildren.length || 1, // Use number of questions for dimension size
+        value: totalWeight, // Use total weight (100) for dimension size
         itemStyle: {
           color: dimensionColor
         },
         children: questionChildren.length > 0 ? questionChildren : undefined,
         dimensionScore: score,
-        dimensionMaxScore: maxDimensionScore
+        dimensionMaxScore: 100 // Now using 100-point scale
       }
     })
 
@@ -177,12 +409,15 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         
         // If it's a question node (has questionText)
         if (data.questionText) {
-          const displayScore = data.actualScore !== undefined ? data.actualScore : info.value
+          const displayScore = data.actualScore !== undefined ? data.actualScore : 0
+          const weight = data.questionWeight || 0
+          const weighted = data.weightedScore !== undefined ? data.weightedScore : 0
           return `<div style="max-width: 400px; padding: 10px; line-height: 1.5; word-wrap: break-word; white-space: normal;">
             <div style="font-weight: bold; color: #60a5fa; margin-bottom: 8px; font-size: 14px;">${data.dimensionName} - ${data.name}</div>
             <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Question:</strong><br/>${data.questionText}</div>
-            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Answer:</strong> ${data.answerText}</div>
-            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 10</div>
+            <div style="margin-bottom: 4px; color: #fbbf24;"><strong>Weight:</strong> ${weight.toFixed(1)}%</div>
+            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 100</div>
+            <div style="font-size: 14px; color: #a78bfa; margin-top: 4px;">Weighted Contribution: ${weighted.toFixed(2)}</div>
           </div>`
         }
         
@@ -203,10 +438,11 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         label: {
           show: true,
           formatter: (params: any) => {
-            // Show dimension name and question ID for questions
+            // Show dimension name, question ID, weight and score for questions
             if (params.data.dimensionName) {
-              const score = params.data.actualScore !== undefined ? params.data.actualScore : params.value
-              return `${params.data.dimensionName}\n${params.name}\n${score.toFixed(1)}`
+              const score = params.data.actualScore !== undefined ? params.data.actualScore : 0
+              const weight = params.data.questionWeight || 0
+              return `${params.data.dimensionName}\n${params.name}\n${score.toFixed(1)}\n(${weight.toFixed(1)}%)`
             }
             // Show just name for dimensions
             return params.name
@@ -264,11 +500,14 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         // If it's a question node (has questionText)
         if (data.questionText) {
           const displayScore = data.actualScore !== undefined ? data.actualScore : 0
+          const weight = data.questionWeight || 0
+          const weighted = data.weightedScore !== undefined ? data.weightedScore : 0
           return `<div style="max-width: 400px; padding: 10px; line-height: 1.5; word-wrap: break-word; white-space: normal;">
             <div style="font-weight: bold; color: #60a5fa; margin-bottom: 8px; font-size: 14px;">${data.dimensionName} - ${data.name}</div>
             <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Question:</strong><br/>${data.questionText}</div>
-            <div style="margin-bottom: 6px; color: #e5e7eb; word-wrap: break-word;"><strong style="color: #fff;">Answer:</strong> ${data.answerText}</div>
-            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 10</div>
+            <div style="margin-bottom: 4px; color: #fbbf24;"><strong>Weight:</strong> ${weight.toFixed(1)}%</div>
+            <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-top: 8px;">Score: ${displayScore.toFixed(1)} / 100</div>
+            <div style="font-size: 14px; color: #a78bfa; margin-top: 4px;">Weighted Contribution: ${weighted.toFixed(2)}</div>
           </div>`
         }
         
@@ -414,9 +653,14 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         {!showTextReport ? (
           <div className="chart-container" style={{ position: 'relative' }}>
             <ReactECharts
+              ref={chartRef}
+              key={`${viewMode}-${selectedDimensions.join(',')}`}
               option={currentOption}
               style={{ height: '600px', width: '100%' }}
               theme="dark"
+              opts={{ renderer: 'svg' }}
+              notMerge={true}
+              lazyUpdate={true}
             />
             {viewMode === 'sunburst' && (
               <div className="water-ball-container">

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { greenEcologyModules } from '../data/greenEcologyQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
-import MultiSelectDropdown from './MultiSelectDropdown'
 import MultiReagentInput from './MultiReagentInput'
 import './QuestionPage.css'
 
@@ -11,21 +10,14 @@ interface QuestionPageGreenProps {
 }
 
 const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('green-ecology')
-    // Parse JSON strings back to arrays for checkbox questions
-    const parsedAnswers: { [key: string]: string | string[] } = {}
-    Object.entries(savedAnswers).forEach(([key, val]) => {
-      try {
-        const parsed = JSON.parse(val)
-        parsedAnswers[key] = Array.isArray(parsed) ? parsed : val
-      } catch {
-        parsedAnswers[key] = val
-      }
-    })
-    return parsedAnswers
-  })
+  const { setScore, getAnswers, setQuestionWeights, getQuestionWeights, saveAnswers, getCurrentFilePath, isLoading } = useDimension()
+  const hasLoadedFromContext = useRef(false)
+  const lastScoreRef = useRef<number>(0)
+  const isInitialLoadComplete = useRef(false)
+  const cachedFilePathRef = useRef<string | null>(null)
+  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({})
+  
+  const { ipcRenderer } = window.require('electron')
   
   // 初始化权重 - 如果没有保存的权重，平均分配
   const allQuestions = greenEcologyModules.flatMap(m => m.questions)
@@ -51,62 +43,69 @@ const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
 
     if (!question) return 0
 
-    // Handle multi-reagent input (Q3)
+    // Q1, Q2: 选择题
+    if (question.type === 'select') {
+      const option = question.options?.find(opt => opt.value === answer)
+      return option?.score || 0
+    }
+
+    // Q3: 多试剂输入 (Essential Hazard Index)
     if (question.type === 'multi-reagent' && typeof answer === 'string') {
       try {
         const reagents = JSON.parse(answer || '[]')
         if (!Array.isArray(reagents) || reagents.length === 0) return 0
         
         let sum = 0
-        let hasValidInput = false
         for (const reagent of reagents) {
-          const mass = parseFloat(reagent.mass || '0')
-          const hcodes = parseFloat(reagent.hcodes || '0')
-          if (!isNaN(mass) && !isNaN(hcodes) && mass >= 0 && hcodes >= 0) {
-            if (mass > 0 || hcodes > 0) hasValidInput = true
-            sum += mass * Math.pow(hcodes, 2)
+          const m = parseFloat(reagent.mass || '0')
+          const nh = parseFloat(reagent.hcodes || '0')
+          if (!isNaN(m) && !isNaN(nh) && m >= 0 && nh >= 0) {
+            sum += m * Math.pow(nh, 2)
           }
         }
-        // 只有当有有效输入时才计算分数
-        if (!hasValidInput) return 0
+        
         return 100 * Math.exp(-1.5 * Math.sqrt(sum))
       } catch {
         return 0
       }
     }
 
-    // Handle multi-input questions
+    // Q4, Q5, Q6: 多输入字段
     if (question.type === 'multi-input' && typeof answer === 'string') {
       try {
         const data = JSON.parse(answer || '{}')
         
-        // Q4: ASI calculation
-        if (question.id === 'q4') {
+        // Q4: Atmospheric Safety Index (ASI)
+        if (questionId === 'q4') {
           const tbp = parseFloat(data.tbp || '0')
-          const nhalogen = parseFloat(data.nhalogen || '0')
-          const nh = parseFloat(data.nh || '0')
+          const nhalogen = parseInt(data.nhalogen || '0')
+          const nh = parseInt(data.nh || '0')
+          
+          if (data.tbp === '' || data.tbp === undefined) return 0
           if (!isNaN(tbp) && !isNaN(nhalogen) && !isNaN(nh)) {
             const sigmoid = 1 / (1 + Math.exp(-0.05 * (tbp - 50)))
-            const penalty = Math.exp(-(2 * nhalogen + 0.5 * nh) / 5)
-            return 100 * sigmoid * penalty
+            const exponential = Math.exp(-(2 * nhalogen + 0.5 * nh) / 5)
+            return 100 * sigmoid * exponential
           }
         }
         
-        // Q5: OEL calculation
-        if (question.id === 'q5') {
+        // Q5: Operational Energy Load (OEL)
+        if (questionId === 'q5') {
           const power = parseFloat(data.power || '0')
           const time = parseFloat(data.time || '0')
-          const throughput = parseFloat(data.throughput || '1')
+          const throughput = parseInt(data.throughput || '1')
+          
+          if (data.power === '' || data.power === undefined) return 0
           if (!isNaN(power) && !isNaN(time) && !isNaN(throughput) && throughput > 0) {
             return 100 * Math.exp(-(power * time) / (10000 * throughput))
           }
         }
         
-        // Q6: WBI calculation
-        if (question.id === 'q6') {
+        // Q6: Waste Burden Intensity (WBI)
+        if (questionId === 'q6') {
           const vwaste = parseFloat(data.vwaste || '0')
           const eta = parseFloat(data.eta || '0')
-          // 只有当用户实际输入了数据时才计算分数
+          
           if (data.vwaste === '' || data.vwaste === undefined) return 0
           if (!isNaN(vwaste) && !isNaN(eta) && vwaste >= 0 && eta >= 0 && eta <= 1) {
             const term1 = 1 / (1 + 0.05 * Math.pow(vwaste * (1 - eta), 1.2))
@@ -121,127 +120,203 @@ const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
       }
     }
 
-    if (question.type === 'select') {
-      const option = question.options?.find(opt => opt.value === answer)
-      return option?.score || 0
-    }
-
-    if (question.type === 'checkbox' && Array.isArray(answer)) {
-      const totalDeduction = answer.reduce((sum, val) => {
-        const option = question.options?.find(opt => opt.value === val)
-        return sum + (option?.score || 0)
-      }, 0)
-      const score = 100 - totalDeduction
-      return Math.max(0, Math.min(10, score / 10))
-    }
-
-    if (question.type === 'input' && question.scoringRules) {
-      const value = parseFloat(answer as string)
-      if (isNaN(value)) return 0
-
-      for (const rule of question.scoringRules) {
-        const minMatch = rule.min === undefined || value >= rule.min
-        const maxMatch = rule.max === undefined || value < rule.max
-        if (minMatch && maxMatch) {
-          return rule.score
-        }
-      }
-    }
-
     return 0
   }
 
-  // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialScores: { [key: string]: number } = {}
+    // 等待Context加载完成
+    if (isLoading) return
     
-    allQuestions.forEach(question => {
-      const rawScore = calculateQuestionScore(question.id, answers[question.id] || (question.type === 'checkbox' ? [] : ''))
-      initialScores[question.id] = rawScore
-    })
-    
-    setQuestionScores(initialScores)
-    
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const rawScore = initialScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (rawScore * weight / 100)
-    }, 0)
-    
-    setScore('green-ecology', totalWeightedScore)
-  }, []) // Run only once on mount
+    if (!hasLoadedFromContext.current) {
+      hasLoadedFromContext.current = true
+      cachedFilePathRef.current = getCurrentFilePath()
+      
+      console.log('[QuestionPageGreen] Loading data from Context...')
+      
+      // 加载保存的权重
+      const savedWeights = getQuestionWeights('green-ecology')
+      if (Object.keys(savedWeights).length > 0) {
+        setWeights(savedWeights)
+      }
+      
+      const savedAnswers = getAnswers('green-ecology')
+      console.log('[QuestionPageGreen] Loaded answers:', savedAnswers)
+      
+      // 加载答案
+      if (Object.keys(savedAnswers).length > 0) {
+        const parsedAnswers: { [key: string]: string | string[] } = {}
+        Object.entries(savedAnswers).forEach(([key, val]) => {
+          try {
+            // 尝试解析JSON
+            const parsed = JSON.parse(val)
+            parsedAnswers[key] = parsed
+          } catch {
+            // 如果不是JSON，直接使用原值
+            parsedAnswers[key] = val
+          }
+        })
+        
+        console.log('[QuestionPageGreen] Parsed answers count:', Object.keys(parsedAnswers).length)
+        console.log('[QuestionPageGreen] Parsed answers:', parsedAnswers)
+        
+        // 设置答案到state
+        setAnswers(parsedAnswers)
+        
+        // 计算初始分数
+        const scores: { [key: string]: number } = {}
+        Object.entries(parsedAnswers).forEach(([qId, ans]) => {
+          // 如果答案是对象或数组，需要转回JSON字符串给calculateQuestionScore
+          const answerForCalculation = (typeof ans === 'object') ? JSON.stringify(ans) : ans
+          const score = calculateQuestionScore(qId, answerForCalculation)
+          scores[qId] = score
+          console.log(`[QuestionPageGreen] Question ${qId} score:`, score, 'answer:', ans)
+        })
+        setQuestionScores(scores)
+        
+        // 延迟计算总分和完成标记
+        setTimeout(() => {
+          const currentWeights = Object.keys(savedWeights).length > 0 ? savedWeights : weights
+          const total = allQuestions.reduce((sum, q) => {
+            const score = scores[q.id] || 0
+            const weight = currentWeights[q.id] || 0
+            return sum + (score * weight / 100)
+          }, 0)
+          lastScoreRef.current = total
+          setScore('green-ecology', total)
+          
+          // 确保在所有state更新后才标记完成
+          isInitialLoadComplete.current = true
+          console.log('[QuestionPageGreen] Initial load complete, total score:', total)
+          console.log('[QuestionPageGreen] Final answers count after load:', Object.keys(parsedAnswers).length)
+        }, 100) // 增加延迟确保所有state更新完成
+      } else {
+        isInitialLoadComplete.current = true
+        console.log('[QuestionPageGreen] No saved data found')
+      }
+    }
+  }, [isLoading])
 
-  const handleAnswerChange = (questionId: string, value: string | string[]) => {
-    const newAnswers = { ...answers, [questionId]: value }
-    setAnswers(newAnswers)
-    // Convert array values to JSON string for storage
-    const storageAnswers: { [key: string]: string } = {}
-    Object.entries(newAnswers).forEach(([key, val]) => {
-      storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
-    })
-    saveAnswers('green-ecology', storageAnswers)
-
-    // 计算新的分数
-    const rawScore = calculateQuestionScore(questionId, value)
-    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
-    setQuestionScores(newQuestionScores)
-
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = newQuestionScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (score * weight / 100)
-    }, 0)
+  // 分数变化时自动计算总分
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) {
+      return
+    }
     
-    setScore('green-ecology', totalWeightedScore)
-  }
-
-  const handleWeightChange = (questionId: string, newWeight: number) => {
-    const newWeights = { ...weights, [questionId]: newWeight }
-    setWeights(newWeights)
-    setQuestionWeights('green-ecology', newWeights)
-    
-    // 重新计算加权总分
     const totalWeightedScore = allQuestions.reduce((sum, q) => {
       const score = questionScores[q.id] || 0
-      const weight = newWeights[q.id] || 0
+      const weight = weights[q.id] || 0
       return sum + (score * weight / 100)
     }, 0)
     
-    setScore('green-ecology', totalWeightedScore)
-  }
-
-  const normalizeWeights = () => {
-    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
-    if (currentTotal === 0) {
-      // 如果全是0，平均分配
-      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
-      })
-      setWeights(newWeights)
-      setQuestionWeights('green-ecology', newWeights)
-    } else {
-      // 按比例归一化到精确的100%
-      const factor = 100 / currentTotal
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
-      })
-      setWeights(newWeights)
-      setQuestionWeights('green-ecology', newWeights)
-      
-      // 重新计算加权总分
-      const totalWeightedScore = allQuestions.reduce((sum, q) => {
-        const score = questionScores[q.id] || 0
-        const weight = newWeights[q.id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
+    if (Math.abs(totalWeightedScore - lastScoreRef.current) > 0.01) {
+      lastScoreRef.current = totalWeightedScore
       setScore('green-ecology', totalWeightedScore)
     }
-  }
+  }, [questionScores, weights])
+
+  // 答案保存useEffect
+  useEffect(() => {
+    console.log('[QuestionPageGreen] Save useEffect triggered')
+    console.log('[QuestionPageGreen] isInitialLoadComplete:', isInitialLoadComplete.current)
+    console.log('[QuestionPageGreen] answers:', answers)
+    const answersCount = Object.keys(answers).length
+    console.log('[QuestionPageGreen] answers count:', answersCount)
+    
+    if (!isInitialLoadComplete.current) {
+      console.log('[QuestionPageGreen] Skipping save - initial load not complete')
+      return
+    }
+    
+    // 移除答案数量检查 - 允许保存空答案以清除数据
+    // if (answersCount === 0) {
+    //   console.log('[QuestionPageGreen] Skipping save - no answers')
+    //   return
+    // }
+    
+    const saveToFile = async () => {
+      try {
+        console.log('[QuestionPageGreen] Preparing to save...')
+        const storageAnswers: { [key: string]: string } = {}
+        Object.entries(answers).forEach(([key, val]) => {
+          storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
+        })
+        
+        // 同时更新Context的allAnswers和questionWeights
+        saveAnswers('green-ecology', storageAnswers)
+        setQuestionWeights('green-ecology', weights)
+        
+        console.log('[QuestionPageGreen] Saving data:', {
+          dimension: 'green-ecology',
+          answersCount: Object.keys(storageAnswers).length,
+          weightsCount: Object.keys(weights).length,
+          scoresCount: Object.keys(questionScores).length,
+          totalScore: lastScoreRef.current
+        })
+        
+        const result = await ipcRenderer.invoke('save-to-file', {
+          dimension: 'green-ecology',
+          data: {
+            answers: storageAnswers,
+            questionWeights: weights,
+            questionScores: questionScores,
+            score: lastScoreRef.current
+          }
+        })
+        
+        console.log('[QuestionPageGreen] Save result:', result)
+      } catch (error) {
+        console.error('[QuestionPageGreen] Failed to save:', error)
+      }
+    }
+    
+    const timer = setTimeout(saveToFile, 500)
+    return () => clearTimeout(timer)
+  }, [answers, weights, questionScores])
+
+  const handleAnswerChange = React.useCallback((questionId: string, value: string | string[]) => {
+    console.log('[QuestionPageGreen] handleAnswerChange:', { questionId, value })
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionId]: value
+    }))
+    
+    const rawScore = calculateQuestionScore(questionId, value)
+    console.log('[QuestionPageGreen] Score calculated:', { questionId, rawScore })
+    setQuestionScores(prevScores => ({
+      ...prevScores,
+      [questionId]: rawScore
+    }))
+  }, [])
+
+  const handleWeightChange = React.useCallback((questionId: string, newWeight: number) => {
+    setWeights(prevWeights => ({
+      ...prevWeights,
+      [questionId]: newWeight
+    }))
+  }, [])
+
+  const handleReagentChange = React.useCallback((value: string) => {
+    handleAnswerChange('q3', value)
+  }, [])
+
+  const normalizeWeights = React.useCallback(() => {
+    setWeights(() => {
+      const newWeights: { [key: string]: number } = {}
+      const baseWeight = Math.floor(10000 / allQuestions.length) / 100
+      let sum = 0
+      
+      allQuestions.forEach((q, index) => {
+        if (index < allQuestions.length - 1) {
+          newWeights[q.id] = baseWeight
+          sum += baseWeight
+        } else {
+          newWeights[q.id] = parseFloat((100 - sum).toFixed(2))
+        }
+      })
+      
+      return newWeights
+    })
+  }, [])
 
   const totalWeightedScore = allQuestions.reduce((sum, q) => {
     const score = questionScores[q.id] || 0
@@ -276,111 +351,107 @@ const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
 
       <div className="question-content-with-sidebar">
         <div className="questions-panel">
-          {allQuestions.map((question) => {
+          {greenEcologyModules.flatMap(module => module.questions).map((question) => {
             return (
               <div key={question.id} className="question-item" style={{ borderLeftColor: scoreColor }}>
                 <label className="question-label">{question.question}</label>
 
-                {question.type === 'multi-reagent' && (
-                  <MultiReagentInput
-                    value={answers[question.id] as string || '[]'}
-                    onChange={(value) => handleAnswerChange(question.id, value)}
-                  />
-                )}
-
-                {question.type === 'multi-input' && question.multiInputFields && (
-                  <div className="multi-input-container">
-                    {question.multiInputFields.map((field) => {
-                      const currentValue = (() => {
-                        try {
-                          const data = JSON.parse(answers[question.id] as string || '{}')
-                          return data[field.name] || ''
-                        } catch {
-                          return ''
-                        }
-                      })()
-
-                      return (
-                        <div key={field.name} className="input-group">
-                          <label className="input-label">{field.label}</label>
-                          <div className="input-with-unit">
-                            <input
-                              type="number"
-                              value={currentValue}
-                              onChange={(e) => {
-                                try {
-                                  const data = JSON.parse(answers[question.id] as string || '{}')
-                                  data[field.name] = e.target.value
-                                  handleAnswerChange(question.id, JSON.stringify(data))
-                                } catch {
-                                  const data = { [field.name]: e.target.value }
-                                  handleAnswerChange(question.id, JSON.stringify(data))
-                                }
-                              }}
-                              onWheel={(e) => e.currentTarget.blur()}
-                              onKeyDown={(e) => {
-                                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                                  e.preventDefault()
-                                }
-                              }}
-                              className="question-input"
-                              placeholder={field.placeholder}
-                              min={field.min}
-                              max={field.max}
-                              step="any"
-                            />
-                            <span className="input-unit">{field.unit}</span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {question.type === 'input' && (
-                  <div className="input-group">
-                    <input
-                      type="number"
+                  {question.type === 'select' && (
+                    <select
                       value={answers[question.id] as string || ''}
                       onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                          e.preventDefault()
-                        }
-                      }}
-                      className="question-input"
-                      placeholder={`Enter value${question.unit ? ` (${question.unit})` : ''}`}
+                      className="question-select"
+                    >
+                      <option value="">-- Select an option --</option>
+                      {question.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {question.type === 'multi-reagent' && (
+                    <MultiReagentInput
+                      value={
+                        typeof answers[question.id] === 'string'
+                          ? answers[question.id] as string
+                          : JSON.stringify(answers[question.id] || [])
+                      }
+                      onChange={handleReagentChange}
                     />
-                    {question.unit && <span className="input-unit">{question.unit}</span>}
-                  </div>
-                )}
+                  )}
 
-                {question.type === 'select' && (
-                  <select
-                    value={answers[question.id] as string || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                    className="question-select"
-                  >
-                    <option value="">-- Select an option --</option>
-                    {question.options?.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label} ({option.score} points)
-                      </option>
-                    ))}
-                  </select>
-                )}
+                  {question.type === 'multi-input' && question.multiInputFields && (
+                    <div className="multi-input-container">
+                      {question.multiInputFields.map((field) => {
+                        const currentValue = (() => {
+                          const answer = answers[question.id]
+                          if (!answer) return ''
+                          
+                          try {
+                            // 如果answer已经是对象，直接使用
+                            if (typeof answer === 'object' && !Array.isArray(answer)) {
+                              return answer[field.name] || ''
+                            }
+                            // 如果是字符串，尝试解析
+                            if (typeof answer === 'string') {
+                              const data = JSON.parse(answer)
+                              return data[field.name] || ''
+                            }
+                            return ''
+                          } catch {
+                            return ''
+                          }
+                        })()
 
-                {question.type === 'checkbox' && (
-                  <MultiSelectDropdown
-                    options={question.options || []}
-                    selectedValues={(answers[question.id] as string[]) || []}
-                    onChange={(values) => handleAnswerChange(question.id, values)}
-                    placeholder="-- Select conditions (multiple) --"
-                  />
-                )}
+                        return (
+                          <div key={field.name} className="input-group">
+                            <label className="input-label">{field.label}</label>
+                            <div className="input-with-unit">
+                              <input
+                                type="number"
+                                value={currentValue}
+                                onChange={(e) => {
+                                  const answer = answers[question.id]
+                                  let data: any = {}
+                                  
+                                  try {
+                                    // 如果answer已经是对象，直接使用
+                                    if (typeof answer === 'object' && !Array.isArray(answer)) {
+                                      data = { ...(answer as any) }
+                                    } else if (typeof answer === 'string') {
+                                      // 如果是字符串，尝试解析
+                                      data = JSON.parse(answer || '{}')
+                                    }
+                                  } catch {
+                                    data = {}
+                                  }
+                                  
+                                  data[field.name] = e.target.value
+                                  handleAnswerChange(question.id, JSON.stringify(data))
+                                }}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                  }
+                                }}
+                                className="question-input"
+                                placeholder={field.placeholder}
+                                min={field.min}
+                                max={field.max}
+                                step={field.step || 'any'}
+                              />
+                              <span className="input-unit">{field.unit}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
-              </div>
+                </div>
             )
           })}
         </div>
@@ -473,4 +544,4 @@ const QuestionPageGreen: React.FC<QuestionPageGreenProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageGreen
+export default React.memo(QuestionPageGreen)

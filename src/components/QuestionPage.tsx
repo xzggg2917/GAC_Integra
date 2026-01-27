@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { grayIndustryModules } from '../data/grayIndustryQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
@@ -9,8 +9,13 @@ interface QuestionPageProps {
 }
 
 const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string }>(() => getAnswers('gray-industry'))
+  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights, isLoading } = useDimension()
+  const hasLoadedFromContext = useRef(false)
+  const lastScoreRef = useRef<number>(0)
+  const isInitialLoadComplete = useRef(false)
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({})
+  
+  const { ipcRenderer } = window.require('electron')
   
   // 初始化权重 - 如果没有保存的权重，平均分配
   const allQuestions = grayIndustryModules.flatMap(m => m.questions)
@@ -105,87 +110,118 @@ const QuestionPage: React.FC<QuestionPageProps> = ({ onClose }) => {
     return 0
   }
 
-  // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialScores: { [key: string]: number } = {}
+    if (isLoading) return
     
-    allQuestions.forEach(question => {
-      const rawScore = calculateQuestionScore(question.id, answers[question.id] || '')
-      initialScores[question.id] = rawScore
-    })
+    if (!hasLoadedFromContext.current) {
+      hasLoadedFromContext.current = true
+      
+      // 加载保存的权重
+      const savedWeights = getQuestionWeights('gray-industry')
+      if (Object.keys(savedWeights).length > 0) {
+        setWeights(savedWeights)
+      }
+      
+      const savedAnswers = getAnswers('gray-industry')
+      if (Object.keys(savedAnswers).length > 0) {
+        setAnswers(savedAnswers)
+        const scores: { [key: string]: number } = {}
+        Object.entries(savedAnswers).forEach(([qId, ans]) => {
+          // Gray页面的answers是Record<string, string>，直接使用即可
+          scores[qId] = calculateQuestionScore(qId, ans)
+          console.log(`[QuestionPageGray] Question ${qId} score:`, scores[qId], 'answer:', ans)
+        })
+        setQuestionScores(scores)
+        
+        setTimeout(() => {
+          const currentWeights = Object.keys(savedWeights).length > 0 ? savedWeights : weights
+          const total = allQuestions.reduce((sum, q) => {
+            const score = scores[q.id] || 0
+            const weight = currentWeights[q.id] || 0
+            return sum + (score * weight / 100)
+          }, 0)
+          lastScoreRef.current = total
+          setScore('gray-industry', total)
+          isInitialLoadComplete.current = true
+        }, 0)
+      } else {
+        isInitialLoadComplete.current = true
+      }
+    }
+  }, [isLoading])
+  
+  // 当分数或权重变化时，自动计算总分（只在初始加载完成后）
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) return
     
-    setQuestionScores(initialScores)
-    
-    // 计算加权总分
     const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const rawScore = initialScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (rawScore * weight / 100)
-    }, 0)
-    
-    setScore('gray-industry', totalWeightedScore)
-  }, []) // Run only once on mount
-
-  const handleAnswerChange = (questionId: string, value: string) => {
-    const newAnswers = { ...answers, [questionId]: value }
-    setAnswers(newAnswers)
-    saveAnswers('gray-industry', newAnswers)
-
-    // 计算新的分数
-    const rawScore = calculateQuestionScore(questionId, value)
-    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
-    setQuestionScores(newQuestionScores)
-
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = newQuestionScores[q.id] || 0
+      const score = questionScores[q.id] || 0
       const weight = weights[q.id] || 0
       return sum + (score * weight / 100)
     }, 0)
     
-    setScore('gray-industry', totalWeightedScore)
+    if (Math.abs(totalWeightedScore - lastScoreRef.current) > 0.01) {
+      lastScoreRef.current = totalWeightedScore
+      setScore('gray-industry', totalWeightedScore)
+    }
+  }, [questionScores, weights])
+  
+  // 保存useEffect
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) return
+    if (Object.keys(answers).length === 0) return
+    
+    const saveToFile = async () => {
+      try {
+        saveAnswers('gray-industry', answers)
+        setQuestionWeights('gray-industry', weights)
+        
+        await ipcRenderer.invoke('save-to-file', {
+          dimension: 'gray-industry',
+          data: {
+            answers: answers,
+            questionWeights: weights,
+            questionScores: questionScores,
+            score: lastScoreRef.current
+          }
+        })
+      } catch (error) {
+        console.error('[QuestionPage] Failed to save:', error)
+      }
+    }
+    
+    const timer = setTimeout(saveToFile, 500)
+    return () => clearTimeout(timer)
+  }, [answers, weights, questionScores])
+
+  const handleAnswerChange = (questionId: string, value: string) => {
+    setAnswers(prev => ({ ...prev, [questionId]: value }))
+    
+    const rawScore = calculateQuestionScore(questionId, value)
+    setQuestionScores(prev => ({ ...prev, [questionId]: rawScore }))
   }
 
   const handleWeightChange = (questionId: string, newWeight: number) => {
-    const newWeights = { ...weights, [questionId]: newWeight }
-    setWeights(newWeights)
-    setQuestionWeights('gray-industry', newWeights)
-    
-    // 重新计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = questionScores[q.id] || 0
-      const weight = newWeights[q.id] || 0
-      return sum + (score * weight / 100)
-    }, 0)
-    
-    setScore('gray-industry', totalWeightedScore)
+    setWeights(prev => ({ ...prev, [questionId]: newWeight }))
   }
 
   const normalizeWeights = () => {
-    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
-    if (currentTotal === 0) {
-      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
+    setWeights(() => {
       const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
+      const baseWeight = Math.floor(10000 / allQuestions.length) / 100
+      let sum = 0
+      
+      allQuestions.forEach((q, index) => {
+        if (index < allQuestions.length - 1) {
+          newWeights[q.id] = baseWeight
+          sum += baseWeight
+        } else {
+          newWeights[q.id] = parseFloat((100 - sum).toFixed(2))
+        }
       })
-      setWeights(newWeights)
-      setQuestionWeights('gray-industry', newWeights)
-    } else {
-      const factor = 100 / currentTotal
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
-      })
-      setWeights(newWeights)
-      setQuestionWeights('gray-industry', newWeights)
-      const totalWeightedScore = allQuestions.reduce((sum, q) => {
-        const score = questionScores[q.id] || 0
-        const weight = newWeights[q.id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
-      setScore('gray-industry', totalWeightedScore)
-    }
+      
+      return newWeights
+    })
   }
 
   const totalWeightedScore = allQuestions.reduce((sum, q) => {

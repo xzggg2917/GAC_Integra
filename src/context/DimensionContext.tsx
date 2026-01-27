@@ -65,24 +65,19 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
         if (result.success) {
           let shouldEnter = false
           
+          // 如果auto-load直接返回了数据，使用它
+          if (result.data) {
+            if (result.data.selectedDimensions) setSelectedDimensions(result.data.selectedDimensions)
+            if (result.data.customWeights) setCustomWeights(result.data.customWeights)
+            if (result.data.scores) setScores(result.data.scores)
+            if (result.data.allAnswers) setAllAnswers(result.data.allAnswers)
+            if (result.data.questionWeights) setQuestionWeights(result.data.questionWeights)
+            console.log('Data loaded from auto-load')
+          }
+          
           if (result.lastFilePath) {
             setCurrentFilePathState(result.lastFilePath)
             shouldEnter = true
-            
-            // 从文件加载数据
-            try {
-              const fileContent = await ipcRenderer.invoke('read-file', result.lastFilePath)
-              if (fileContent.success && fileContent.data) {
-                if (fileContent.data.selectedDimensions) setSelectedDimensions(fileContent.data.selectedDimensions)
-                if (fileContent.data.customWeights) setCustomWeights(fileContent.data.customWeights)
-                if (fileContent.data.scores) setScores(fileContent.data.scores)
-                if (fileContent.data.allAnswers) setAllAnswers(fileContent.data.allAnswers)
-                if (fileContent.data.questionWeights) setQuestionWeights(fileContent.data.questionWeights)
-                console.log('Data loaded from file:', result.lastFilePath)
-              }
-            } catch (error) {
-              console.error('Failed to load data from file:', error)
-            }
           }
           
           if (result.appEntered === true) {
@@ -107,35 +102,41 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     loadLastFile()
   }, [])
 
-  // 数据变化时自动保存到当前文件
-  useEffect(() => {
-    if (!isInitialMount.current && isLoaded && currentFilePath) {
-      const autoSave = async () => {
-        try {
-          const data = {
-            selectedDimensions,
-            customWeights,
-            scores,
-            allAnswers,
-            questionWeights
-          }
-          console.log('[auto-save] Saving to:', currentFilePath)
-          console.log('[auto-save] Data:', data)
-          await ipcRenderer.invoke('save-to-file', currentFilePath, data)
-          console.log('[auto-save] Save completed')
-        } catch (error) {
-          console.error('Failed to auto-save:', error)
-        }
-      }
-      // 延迟保存，避免频繁写入
-      const timer = setTimeout(autoSave, 500)
-      return () => clearTimeout(timer)
-    } else {
-      if (!currentFilePath) {
-        console.log('[auto-save] Skipped: No file path set')
-      }
-    }
-  }, [selectedDimensions, customWeights, scores, allAnswers, questionWeights, isLoaded, currentFilePath])
+  // 数据变化时的自动保存已移到各个维度页面
+  // Context不再自动保存allAnswers和questionWeights，避免覆盖维度页面的保存
+  // 只保存分数到内存中，让维度页面负责持久化
+  // useEffect(() => {
+  //   // 如果是初始加载或未加载完成，不自动保存
+  //   if (isInitialMount.current || !isLoaded) {
+  //     return
+  //   }
+  //   
+  //   // 如果没有当前文件路径，不自动保存
+  //   if (!currentFilePath) {
+  //     return
+  //   }
+  //   
+  //   // 自动保存到当前文件
+  //   const autoSave = async () => {
+  //     try {
+  //       const data = {
+  //         selectedDimensions,
+  //         customWeights,
+  //         scores,
+  //         allAnswers,
+  //         questionWeights
+  //       }
+  //       await ipcRenderer.invoke('save-to-file', currentFilePath, data)
+  //       console.log('[DimensionContext] Auto-saved to:', currentFilePath)
+  //     } catch (error) {
+  //       console.error('[DimensionContext] Failed to auto-save:', error)
+  //     }
+  //   }
+  //   
+  //   // 延迟保存，避免频繁写文件
+  //   const timer = setTimeout(autoSave, 500)
+  //   return () => clearTimeout(timer)
+  // }, [allAnswers, questionWeights, scores, selectedDimensions, customWeights, isLoaded, currentFilePath])
 
   // 页面状态变化时保存
   useEffect(() => {
@@ -156,9 +157,11 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   }
 
   const saveAnswers = (dimensionId: string, answers: { [questionId: string]: string }) => {
-    console.log('[saveAnswers] Saving answers for dimension:', dimensionId)
-    console.log('[saveAnswers] Answers:', answers)
-    setAllAnswers(prev => ({ ...prev, [dimensionId]: answers }))
+    // 更新allAnswers状态，触发自动保存到文件
+    setAllAnswers(prev => ({
+      ...prev,
+      [dimensionId]: answers
+    }))
   }
 
   const getAnswers = (dimensionId: string) => {

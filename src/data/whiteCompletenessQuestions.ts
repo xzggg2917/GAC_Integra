@@ -1,191 +1,145 @@
 export interface Question {
-  id: string;
-  moduleId: string;
-  question: string;
-  type: 'input' | 'select' | 'checkbox' | 'multi-input';
-  unit?: string;
-  formula?: string;
-  reference?: { name: string; url: string };
-  options?: { value: string; score: number; label: string }[];
-  scoringRules?: { min?: number; max?: number; score: number; description: string }[];
-  multiInputFields?: Array<{
-    name: string;
-    label: string;
-    unit: string;
-    placeholder: string;
-    min?: number;
-    max?: number;
-  }>;
+  id: string
+  moduleId: string
+  question: string
+  type: 'input' | 'select' | 'multi-input'
+  unit?: string
+  multiInputFields?: {
+    name: string
+    label: string
+    unit: string
+    placeholder: string
+    min?: number
+    max?: number
+  }[]
+  options?: { value: string; score: number; label: string }[]
+  scoringRules?: { score: number; description: string }[]
 }
 
 export interface Module {
-  id: string;
-  name: string;
-  nameEn: string;
-  focus: string;
-  questions: Question[];
+  id: string
+  name: string
+  nameEn: string
+  focus: string
+  questions: Question[]
 }
 
 export const whiteCompletenessModules: Module[] = [
   {
-    id: 'method-validation',
-    name: 'Method Validation Assessment',
-    nameEn: 'Analytical Method Robustness & Compliance',
-    focus: 'Evaluating method validation rigor, specificity, and operational robustness',
+    id: 'qualitative-assessment',
+    name: 'Qualitative Assessment',
+    nameEn: 'Qualitative Assessment',
+    focus: 'Causal Chain Clarity and Predictive Logic',
     questions: [
       {
         id: 'q1',
-        moduleId: 'method-validation',
-        question: 'Q1: Method Validation Rigor and Compliance - Evaluates whether the method has undergone systematic validation by authoritative bodies (e.g., ICH, FDA, GB standards)',
+        moduleId: 'qualitative-assessment',
+        question: 'Q1: Causal Chain Clarity - Evaluate the clarity and transparency of the causal relationships and physicochemical conversion logic in the evaluation process from sample pretreatment, separation to detection',
         type: 'select',
         options: [
-          { 
-            value: 'full-validation', 
-            score: 100, 
-            label: 'A (100 pts): Strictly follows national/international standards, completed full validation including accuracy, precision, specificity, linearity, range with complete compliance reports' 
-          },
-          { 
-            value: 'core-validation', 
-            score: 75, 
-            label: 'B (75 pts): Completed core validation procedures with legally accepted data support, meets general laboratory quality system requirements' 
-          },
-          { 
-            value: 'partial-validation', 
-            score: 50, 
-            label: 'C (50 pts): Insufficient validation, lacking key indicator verification (e.g., long-term stability testing), data may only support preliminary application' 
-          },
-          { 
-            value: 'basic-test', 
-            score: 25, 
-            label: 'D (25 pts): Only performed simple basic testing, lacking systematic validation data' 
-          },
-          { 
-            value: 'no-validation', 
-            score: 0, 
-            label: 'E (0 pts): Not validated at any level, results highly uncertain' 
-          }
+          { value: '100', label: 'A: Completely transparent - Every intermediate state has mature microscale dynamics or thermodynamic support', score: 100 },
+          { value: '75', label: 'B: Mainly clear - Main processes have theoretical support, only a few boundary effects or secondary reactions have minor empirical assumptions', score: 75 },
+          { value: '50', label: 'C: Logically discontinuous - Known certain operations are effective but microscopic mechanism is in academic debate or only passes qualitative analogy comparison', score: 50 },
+          { value: '25', label: 'D: Theoretically weak - Method design mainly references similar instrument parameters, lacks systematic rigorous deduction for system itself', score: 25 },
+          { value: '0', label: 'E: Logically contradictory - Method is entirely built on trial and error basis, processes oppose operating principles (Trial and Error), or are described as black box', score: 0 }
         ]
       },
       {
         id: 'q2',
-        moduleId: 'method-validation',
-        question: 'Q2: Analytical Specificity and Matrix Interference Resistance - Evaluates method\'s ability to accurately identify or quantify target analytes in complex backgrounds (e.g., excipients, impurities, degradation products)',
+        moduleId: 'qualitative-assessment',
+        question: 'Q2: Predictive Logic - Evaluate whether the existing theoretical model can be validated in advance to predict variation trends when environmental parameters (such as temperature, pH, substrate) change',
         type: 'select',
         options: [
-          { 
-            value: 'high-selectivity', 
-            score: 100, 
-            label: 'A (100 pts): Highly selective, unaffected by matrix interferences at substrate level or even below salt level, fully resistant to matrix effects' 
-          },
-          { 
-            value: 'good-selectivity', 
-            score: 75, 
-            label: 'B (75 pts): Good selectivity, matrix interference relatively weak, can be eliminated through simple pretreatment or optimized conditions' 
-          },
-          { 
-            value: 'moderate-interference', 
-            score: 50, 
-            label: 'C (50 pts): Matrix interference exists, requires additional matrix matching or correction procedures, but similar analogues may still interfere under certain conditions' 
-          },
-          { 
-            value: 'poor-specificity', 
-            score: 25, 
-            label: 'D (25 pts): Poor specificity, highly susceptible to similar sample matrix or background impurity interference, results prone to false positives/negatives or systematic bias' 
-          },
-          { 
-            value: 'no-specificity', 
-            score: 0, 
-            label: 'E (0 pts): No specificity, cannot distinguish or identify target analytes in complex matrices' 
-          }
+          { value: '100', label: 'A: Strong deductive演绎 ability - Based on theoretical formulas can immediately calculate impact of variable changes', score: 100 },
+          { value: '75', label: 'B: Directionally accurate prediction - Can predict result trends qualitatively, but quantitative deviation requires experimental verification', score: 75 },
+          { value: '50', label: 'C: Empirical judgment - Relies on past experience with similar samples for processing prediction, lacks strict formula derivation', score: 50 },
+          { value: '25', label: 'D: Frequently inaccurate prediction - Predictions frequently fail, interference impacts exceed theoretical predictions', score: 25 },
+          { value: '0', label: 'E: Completely unpredictive - Every new situation requires extensive trial and error experiments to confirm rules', score: 0 }
         ]
-      },
+      }
+    ]
+  },
+  {
+    id: 'quantitative-assessment',
+    name: 'Quantitative Assessment',
+    nameEn: 'Quantitative Assessment',
+    focus: 'Parameter Purity Index, Trend Alignment Modulus, Logic Density Ratio',
+    questions: [
       {
         id: 'q3',
-        moduleId: 'method-validation',
-        question: 'Q3: Operational Robustness and Method Transfer Reliability - Evaluates method\'s tolerance to minor experimental variations (e.g., pH, temperature, flow rate, operator changes)',
-        type: 'select',
-        options: [
-          { 
-            value: 'robust-doe', 
-            score: 100, 
-            label: 'A (100 pts): Systematic robustness evaluation (e.g., DoE experiments), proven stable under normal operational condition fluctuations with consistent results' 
+        moduleId: 'quantitative-assessment',
+        question: 'Q3: Parameter Purity Index (PPI) - Measures the number of scientific constants or fundamental physical quantities used in calculation formulas',
+        type: 'multi-input',
+        multiInputFields: [
+          {
+            name: 'P',
+            label: 'P (Scientific Constants Count)',
+            unit: 'count',
+            placeholder: 'Enter number of core scientific constants or fundamental quantities in calculation formula (e.g., gas constant, Faraday constant, Arrhenius constant, wavelength, temperature)',
+            min: 0
           },
-          { 
-            value: 'core-parameters', 
-            score: 75, 
-            label: 'B (75 pts): Completed core parameter usage testing, method stable in standard experimental environment' 
-          },
-          { 
-            value: 'sensitive-small', 
-            score: 50, 
-            label: 'C (50 pts): Sensitive to operational details, minor environmental or condition variations may cause result fluctuations, requiring system correction' 
-          },
-          { 
-            value: 'weak-method', 
-            score: 25, 
-            label: 'D (25 pts): Weak method, only works under strictly controlled conditions, minor parameter drift causes significant personnel-dependent variance, lacking migration capability' 
-          },
-          { 
-            value: 'unstable', 
-            score: 0, 
-            label: 'E (0 pts): Lacks stability, experimental results have inherent randomness, cannot be validated through repeat verification' 
+          {
+            name: 'E',
+            label: 'E (Empirical Correction Count)',
+            unit: 'count',
+            placeholder: 'Enter number of artificially calibrated factors introduced to fit standard curves, batch constants, or experimental correction items for tightening results',
+            min: 0
           }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: High scientific constant usage with minimal empirical corrections' },
+          { score: 60, description: 'Good: Balanced theory and empirical calibration' },
+          { score: 30, description: 'Fair: Heavy reliance on empirical fitting' },
+          { score: 0, description: 'Poor: Entirely empirical black-box approach' }
         ]
       },
       {
         id: 'q4',
-        moduleId: 'method-validation',
-        question: 'Q4: Precision-Accuracy Collaborative Index (PACI) - Comprehensively evaluates the balance between recovery rate (accuracy) and RSD (precision), assessing core data robustness',
+        moduleId: 'quantitative-assessment',
+        question: 'Q4: Trend Alignment Modulus (TAM) - Measures the consistency between actual experimental results and theoretical predictions by calculating the ratio',
         type: 'multi-input',
-        formula: 'Score = 100 × exp(-0.5 × ((R-100)/3)²) × 1/(1+(RSD/2.5)²)',
         multiInputFields: [
           {
-            name: 'recovery',
-            label: 'R (Average Spike Recovery Rate)',
-            unit: '%',
-            placeholder: 'Enter recovery rate (80-120)',
-            min: 0,
-            max: 200
-          },
-          {
-            name: 'rsd',
-            label: 'RSD (Relative Standard Deviation)',
-            unit: '%',
-            placeholder: 'Enter RSD (0-20)',
-            min: 0,
-            max: 100
+            name: 'Ratio',
+            label: 'Ratio (Experimental/Theoretical)',
+            unit: 'ratio',
+            placeholder: 'Enter the ratio of actual experimental result to theoretical prediction value. Example: If experimental value matches theory well, Ratio approaches 1; small deviations pass non-linear function filtering',
+            min: 0
           }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: Perfect alignment between experiment and theory (Ratio ≈ 1)' },
+          { score: 60, description: 'Good: Minor deviation with acceptable consistency' },
+          { score: 30, description: 'Fair: Moderate mismatch requiring explanation' },
+          { score: 0, description: 'Poor: Significant divergence from theoretical predictions' }
         ]
       },
       {
         id: 'q5',
-        moduleId: 'method-validation',
-        question: 'Q5: Sensitivity-Linearity Fidelity Score (SLFS) - Evaluates method\'s linear fit quality and whether sensitivity exceeds regulatory threshold',
+        moduleId: 'quantitative-assessment',
+        question: 'Q5: Logic Density Ratio (LDR) - Measures the density ratio of core scientific principles supported by the method to artificially preset undisclosed settings or special limitation conditions',
         type: 'multi-input',
-        formula: 'Score = 100 × ((r²-0.99)/0.0099)⁴ × cos(π/2 × LOD/C_req)',
         multiInputFields: [
           {
-            name: 'r2',
-            label: 'r² (Linear Correlation Coefficient)',
-            unit: '',
-            placeholder: 'Enter r² value (0.990-1.000)',
-            min: 0.99,
-            max: 1.0
-          },
-          {
-            name: 'lod',
-            label: 'LOD (Actual Limit of Detection)',
-            unit: 'concentration unit',
-            placeholder: 'Enter LOD',
+            name: 'L',
+            label: 'L (Core Scientific Principles)',
+            unit: 'count',
+            placeholder: 'Enter the number of core scientific principles supported by the method (e.g., mass conservation law, fluorescence excitation law, chromatographic color management theory)',
             min: 0
           },
           {
-            name: 'creq',
-            label: 'C_req (Regulatory Maximum LOD Threshold)',
-            unit: 'concentration unit',
-            placeholder: 'Enter regulatory threshold (e.g., 2.0)',
+            name: 'A',
+            label: 'A (Preset Undisclosed Settings)',
+            unit: 'count',
+            placeholder: 'Enter the number of artificially preset undisclosed or special limited conditions to establish. Note: The formula passes A^1.4 power handling, which slightly penalizes methods built on thick theoretical foundations, ensuring minimum accumulation of theoretical cornerstone support while tolerating reasonable operational assumptions',
             min: 0
           }
+        ],
+        scoringRules: [
+          { score: 100, description: 'Excellent: High scientific principle foundation with minimal undisclosed assumptions' },
+          { score: 60, description: 'Good: Reasonable balance of theory and operational requirements' },
+          { score: 30, description: 'Fair: Heavy dependence on undisclosed settings' },
+          { score: 0, description: 'Poor: Method lacks theoretical foundation, mostly empirical black box' }
         ]
       }
     ]

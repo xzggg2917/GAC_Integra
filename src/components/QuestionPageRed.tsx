@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { redPerformanceModules } from '../data/redPerformanceQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
@@ -10,20 +10,17 @@ interface QuestionPageRedProps {
 }
 
 const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('red-performance')
-    const parsedAnswers: { [key: string]: string | string[] } = {}
-    Object.entries(savedAnswers).forEach(([key, val]) => {
-      try {
-        const parsed = JSON.parse(val)
-        parsedAnswers[key] = Array.isArray(parsed) ? parsed : val
-      } catch {
-        parsedAnswers[key] = val
-      }
-    })
-    return parsedAnswers
-  })
+  console.log('[QuestionPageRed] Component rendering')
+  
+  const { setScore, getAnswers, setQuestionWeights, getQuestionWeights, saveAnswers, getCurrentFilePath, isLoading } = useDimension()
+  const hasLoadedFromContext = useRef(false)
+  const lastScoreRef = useRef<number>(0)
+  const isInitialLoadComplete = useRef(false) // 标记初始加载是否完成
+  const cachedFilePathRef = useRef<string | null>(null)
+  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({})
+  
+  // 获取Electron IPC
+  const { ipcRenderer } = window.require('electron')
   
   // 初始化权重 - 如果没有保存的权重，平均分配
   const allQuestions = redPerformanceModules.flatMap(m => m.questions)
@@ -118,92 +115,157 @@ const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
     return 0
   }
 
-  // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialScores: { [key: string]: number } = {}
+    // 等待Context加载完成
+    if (isLoading) return
     
-    allQuestions.forEach(question => {
-      const rawScore = calculateQuestionScore(question.id, answers[question.id] || (question.type === 'checkbox' ? [] : ''))
-      initialScores[question.id] = rawScore
-    })
-    
-    setQuestionScores(initialScores)
-    
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const rawScore = initialScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (rawScore * weight / 100)
-    }, 0)
-    
-    setScore('red-performance', totalWeightedScore)
-  }, []) // Run only once on mount
+    if (!hasLoadedFromContext.current) {
+      hasLoadedFromContext.current = true
+      cachedFilePathRef.current = getCurrentFilePath()
+      
+      // 加载保存的权重
+      const savedWeights = getQuestionWeights('red-performance')
+      if (Object.keys(savedWeights).length > 0) {
+        setWeights(savedWeights)
+      }
+      
+      const savedAnswers = getAnswers('red-performance')
+      if (Object.keys(savedAnswers).length > 0) {
+        const parsedAnswers: { [key: string]: string | string[] } = {}
+        Object.entries(savedAnswers).forEach(([key, val]) => {
+          try {
+            const parsed = JSON.parse(val)
+            parsedAnswers[key] = parsed
+          } catch {
+            parsedAnswers[key] = val
+          }
+        })
+        setAnswers(parsedAnswers)
+        const scores: { [key: string]: number } = {}
+        Object.entries(parsedAnswers).forEach(([qId, ans]) => {
+          // 如果答案是对象或数组，需要转回JSON字符串给calculateQuestionScore
+          const answerForCalculation = (typeof ans === 'object') ? JSON.stringify(ans) : ans
+          scores[qId] = calculateQuestionScore(qId, answerForCalculation)
+          console.log(`[QuestionPageRed] Question ${qId} score:`, scores[qId], 'answer:', ans)
+        })
+        setQuestionScores(scores)
+        
+        // 使用setTimeout延迟计算总分，避免在渲染期间调用setScore
+        setTimeout(() => {
+          const currentWeights = Object.keys(savedWeights).length > 0 ? savedWeights : weights
+          const total = allQuestions.reduce((sum, q) => {
+            const score = scores[q.id] || 0
+            const weight = currentWeights[q.id] || 0
+            return sum + (score * weight / 100)
+          }, 0)
+          lastScoreRef.current = total // 设置初始分数引用
+          setScore('red-performance', total)
+          isInitialLoadComplete.current = true // 标记初始加载完成
+        }, 0)
+      } else {
+        // 没有保存的数据，也需要标记加载完成
+        isInitialLoadComplete.current = true
+      }
+    }
+  }, [isLoading])
 
-  const handleAnswerChange = (questionId: string, value: string | string[]) => {
-    const newAnswers = { ...answers, [questionId]: value }
-    setAnswers(newAnswers)
-    const storageAnswers: { [key: string]: string } = {}
-    Object.entries(newAnswers).forEach(([key, val]) => {
-      storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
-    })
-    saveAnswers('red-performance', storageAnswers)
-
-    // 计算新的分数
-    const rawScore = calculateQuestionScore(questionId, value)
-    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
-    setQuestionScores(newQuestionScores)
-
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = newQuestionScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (score * weight / 100)
-    }, 0)
-    
-    setScore('red-performance', totalWeightedScore)
-  }
-
-  const handleWeightChange = (questionId: string, newWeight: number) => {
-    const newWeights = { ...weights, [questionId]: newWeight }
-    setWeights(newWeights)
-    setQuestionWeights('red-performance', newWeights)
-    
-    // 重新计算加权总分
+  // 当分数或权重变化时，自动计算总分（只在初始加载完成后）
+  useEffect(() => {
+    // 只有初始加载完成后才响应变化
+    if (!isInitialLoadComplete.current) return
     const totalWeightedScore = allQuestions.reduce((sum, q) => {
       const score = questionScores[q.id] || 0
-      const weight = newWeights[q.id] || 0
+      const weight = weights[q.id] || 0
       return sum + (score * weight / 100)
     }, 0)
     
-    setScore('red-performance', totalWeightedScore)
-  }
-
-  const normalizeWeights = () => {
-    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
-    if (currentTotal === 0) {
-      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
-      })
-      setWeights(newWeights)
-      setQuestionWeights('red-performance', newWeights)
-    } else {
-      const factor = 100 / currentTotal
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
-      })
-      setWeights(newWeights)
-      setQuestionWeights('red-performance', newWeights)
-      const totalWeightedScore = allQuestions.reduce((sum, q) => {
-        const score = questionScores[q.id] || 0
-        const weight = newWeights[q.id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
+    // 只有当分数真正变化时才更新
+    if (Math.abs(totalWeightedScore - lastScoreRef.current) > 0.01) {
+      lastScoreRef.current = totalWeightedScore
       setScore('red-performance', totalWeightedScore)
     }
-  }
+  }, [questionScores, weights])
+
+  // 单独的useEffect处理答案保存，直接使用IPC写文件，不经过Context
+  useEffect(() => {
+    // 只有初始加载完成后才保存
+    if (!isInitialLoadComplete.current) return
+    if (Object.keys(answers).length === 0) return
+    
+    const saveToFile = async () => {
+      try {
+        const storageAnswers: { [key: string]: string } = {}
+        Object.entries(answers).forEach(([key, val]) => {
+          storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
+        })
+        
+        // 同时更新Context的allAnswers和questionWeights
+        saveAnswers('red-performance', storageAnswers)
+        setQuestionWeights('red-performance', weights)
+        
+        await ipcRenderer.invoke('save-to-file', {
+          dimension: 'red-performance',
+          data: {
+            answers: storageAnswers,
+            questionWeights: weights,
+            questionScores: questionScores,
+            score: lastScoreRef.current
+          }
+        })
+      } catch (error) {
+        console.error('[QuestionPageRed] Failed to save:', error)
+      }
+    }
+    
+    // 延迟保存，防抖
+    const timer = setTimeout(saveToFile, 500)
+    return () => clearTimeout(timer)
+  }, [answers, weights, questionScores])
+
+  const handleAnswerChange = React.useCallback((questionId: string, value: string | string[]) => {
+    console.log('[QuestionPageRed] handleAnswerChange:', { questionId, value })
+    // 只更新本地state，不调用saveAnswers
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionId]: value
+    }))
+    
+    const rawScore = calculateQuestionScore(questionId, value)
+    console.log('[QuestionPageRed] Score calculated:', { questionId, rawScore })
+    setQuestionScores(prevScores => ({
+      ...prevScores,
+      [questionId]: rawScore
+    }))
+  }, [])
+
+  const handleWeightChange = React.useCallback((questionId: string, newWeight: number) => {
+    setWeights(prevWeights => ({
+      ...prevWeights,
+      [questionId]: newWeight
+    }))
+  }, [])
+
+  const normalizeWeights = React.useCallback(() => {
+    setWeights(() => {
+      const newWeights: { [key: string]: number } = {}
+      
+      // 直接均分，不考虑当前值
+      const baseWeight = Math.floor(10000 / allQuestions.length) / 100
+      let sum = 0
+      
+      allQuestions.forEach((q, index) => {
+        if (index < allQuestions.length - 1) {
+          newWeights[q.id] = baseWeight
+          sum += baseWeight
+        } else {
+          // 最后一个补齐到100
+          newWeights[q.id] = parseFloat((100 - sum).toFixed(2))
+        }
+      })
+      
+      return newWeights
+    })
+  }, [])
 
   const totalWeightedScore = allQuestions.reduce((sum, q) => {
     const score = questionScores[q.id] || 0
@@ -247,8 +309,12 @@ const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
                     <div className="multi-input-container">
                       {question.multiInputFields.map((field) => {
                         const currentData = (() => {
+                          const answer = answers[question.id]
+                          if (typeof answer === 'object' && !Array.isArray(answer)) {
+                            return answer
+                          }
                           try {
-                            return JSON.parse((answers[question.id] as string) || '{}')
+                            return JSON.parse((answer as string) || '{}')
                           } catch {
                             return {}
                           }
@@ -262,8 +328,19 @@ const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
                                 type="number"
                                 value={currentData[field.name] || ''}
                                 onChange={(e) => {
-                                  const newData = { ...currentData, [field.name]: e.target.value }
-                                  handleAnswerChange(question.id, JSON.stringify(newData))
+                                  const answer = answers[question.id]
+                                  let data: any = {}
+                                  if (typeof answer === 'object' && !Array.isArray(answer)) {
+                                    data = { ...(answer as any) }
+                                  } else {
+                                    try {
+                                      data = JSON.parse((answer as string) || '{}')
+                                    } catch {
+                                      data = {}
+                                    }
+                                  }
+                                  data[field.name] = e.target.value
+                                  handleAnswerChange(question.id, JSON.stringify(data))
                                 }}
                                 onWheel={(e) => e.currentTarget.blur()}
                                 onKeyDown={(e) => {
@@ -421,4 +498,5 @@ const QuestionPageRed: React.FC<QuestionPageRedProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageRed
+// 使用React.memo防止Context其他状态变化导致的不必要重新渲染
+export default React.memo(QuestionPageRed)

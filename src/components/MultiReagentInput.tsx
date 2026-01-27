@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import './MultiReagentInput.css'
 
 interface Reagent {
@@ -12,36 +12,64 @@ interface MultiReagentInputProps {
 }
 
 const MultiReagentInput: React.FC<MultiReagentInputProps> = ({ value, onChange }) => {
-  const [reagents, setReagents] = useState<Reagent[]>([])
+  const [reagents, setReagents] = useState<Reagent[]>([{ mass: '', hcodes: '' }])
+  const isUserAction = useRef(false) // 标记是否是用户操作
+  const lastValueRef = useRef<string>(value) // 跟踪上一次的value
+  const isInitialized = useRef(false) // 标记是否已经初始化过
 
+  // 监听value变化（从外部传入，比如加载数据）
   useEffect(() => {
-    try {
-      const parsed = JSON.parse(value || '[]')
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        setReagents(parsed)
-      } else {
-        setReagents([{ mass: '', hcodes: '' }])
+    // 只有当value真正改变时才更新
+    if (value !== lastValueRef.current) {
+      console.log('[MultiReagentInput] value changed:', value)
+      lastValueRef.current = value
+      isUserAction.current = false // 标记为外部更新
+      
+      try {
+        const parsed = JSON.parse(value || '[]')
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log('[MultiReagentInput] Setting reagents from value:', parsed)
+          setReagents(parsed)
+          isInitialized.current = true
+        } else if (!isInitialized.current) {
+          // 首次加载且value为空，保持默认的一个空试剂
+          console.log('[MultiReagentInput] First load with empty value, keeping default reagent')
+          isInitialized.current = true
+        }
+      } catch (err) {
+        console.error('[MultiReagentInput] Failed to parse value:', err)
+        if (!isInitialized.current) {
+          isInitialized.current = true
+        }
       }
-    } catch {
-      setReagents([{ mass: '', hcodes: '' }])
     }
-  }, [])
+  }, [value])
 
+  // 只在用户操作时调用onChange
   useEffect(() => {
-    onChange(JSON.stringify(reagents))
+    if (isUserAction.current) {
+      const newValue = JSON.stringify(reagents)
+      if (newValue !== lastValueRef.current) {
+        lastValueRef.current = newValue
+        onChange(newValue)
+      }
+    }
   }, [reagents, onChange])
 
   const addReagent = () => {
+    isUserAction.current = true
     setReagents([...reagents, { mass: '', hcodes: '' }])
   }
 
   const removeReagent = (index: number) => {
     if (reagents.length > 1) {
+      isUserAction.current = true
       setReagents(reagents.filter((_, i) => i !== index))
     }
   }
 
   const updateReagent = (index: number, field: keyof Reagent, value: string) => {
+    isUserAction.current = true
     const updated = [...reagents]
     updated[index][field] = value
     setReagents(updated)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
 import { useDimension } from '../context/DimensionContext'
 import { getScoreColor } from '../utils/colorUtils'
@@ -10,21 +10,14 @@ interface QuestionPageYellowProps {
 }
 
 const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
-  const { setScore, saveAnswers, getAnswers, setQuestionWeights, getQuestionWeights } = useDimension()
-  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>(() => {
-    const savedAnswers = getAnswers('yellow-society')
-    // Parse JSON strings back to arrays for checkbox questions
-    const parsedAnswers: { [key: string]: string | string[] } = {}
-    Object.entries(savedAnswers).forEach(([key, val]) => {
-      try {
-        const parsed = JSON.parse(val)
-        parsedAnswers[key] = Array.isArray(parsed) ? parsed : val
-      } catch {
-        parsedAnswers[key] = val
-      }
-    })
-    return parsedAnswers
-  })
+  const { setScore, getAnswers, setQuestionWeights, getQuestionWeights, saveAnswers, getCurrentFilePath, isLoading } = useDimension()
+  const hasLoadedFromContext = useRef(false)
+  const lastScoreRef = useRef<number>(0)
+  const isInitialLoadComplete = useRef(false)
+  const cachedFilePathRef = useRef<string | null>(null)
+  const [answers, setAnswers] = useState<{ [key: string]: string | string[] }>({})
+  
+  const { ipcRenderer } = window.require('electron')
   
   // 初始化权重 - 如果没有保存的权重，平均分配
   const allQuestions = yellowSocietyModules.flatMap(m => m.questions)
@@ -128,93 +121,145 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
     return 0
   }
 
-  // Initialize scores from saved answers on mount
   useEffect(() => {
-    const initialScores: { [key: string]: number } = {}
+    if (isLoading) return
     
-    allQuestions.forEach(question => {
-      const rawScore = calculateQuestionScore(question.id, answers[question.id] || (question.type === 'checkbox' ? [] : ''))
-      initialScores[question.id] = rawScore
-    })
-    
-    setQuestionScores(initialScores)
-    
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const rawScore = initialScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (rawScore * weight / 100)
-    }, 0)
-    
-    setScore('yellow-society', totalWeightedScore)
-  }, []) // Run only once on mount
+    if (!hasLoadedFromContext.current) {
+      hasLoadedFromContext.current = true
+      cachedFilePathRef.current = getCurrentFilePath()
+      
+      // 加载保存的权重
+      const savedWeights = getQuestionWeights('yellow-society')
+      if (Object.keys(savedWeights).length > 0) {
+        setWeights(savedWeights)
+      }
+      
+      const savedAnswers = getAnswers('yellow-society')
+      if (Object.keys(savedAnswers).length > 0) {
+        const parsedAnswers: { [key: string]: string | string[] } = {}
+        Object.entries(savedAnswers).forEach(([key, val]) => {
+          try {
+            const parsed = JSON.parse(val)
+            parsedAnswers[key] = parsed
+          } catch {
+            parsedAnswers[key] = val
+          }
+        })
+        setAnswers(parsedAnswers)
+        
+        const scores: { [key: string]: number } = {}
+        Object.entries(parsedAnswers).forEach(([qId, ans]) => {
+          // 如果答案是对象或数组，需要转回JSON字符串给calculateQuestionScore
+          const answerForCalculation = (typeof ans === 'object') ? JSON.stringify(ans) : ans
+          scores[qId] = calculateQuestionScore(qId, answerForCalculation)
+          console.log(`[QuestionPageYellow] Question ${qId} score:`, scores[qId], 'answer:', ans)
+        })
+        setQuestionScores(scores)
+        
+        setTimeout(() => {
+          const currentWeights = Object.keys(savedWeights).length > 0 ? savedWeights : weights
+          const total = allQuestions.reduce((sum, q) => {
+            const score = scores[q.id] || 0
+            const weight = currentWeights[q.id] || 0
+            return sum + (score * weight / 100)
+          }, 0)
+          lastScoreRef.current = total
+          setScore('yellow-society', total)
+          isInitialLoadComplete.current = true
+        }, 0)
+      } else {
+        isInitialLoadComplete.current = true
+      }
+    }
+  }, [isLoading])
 
-  const handleAnswerChange = (questionId: string, value: string | string[]) => {
-    const newAnswers = { ...answers, [questionId]: value }
-    setAnswers(newAnswers)
-    // Convert array values to JSON string for storage
-    const storageAnswers: { [key: string]: string } = {}
-    Object.entries(newAnswers).forEach(([key, val]) => {
-      storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
-    })
-    saveAnswers('yellow-society', storageAnswers)
-
-    // 计算新的分数
-    const rawScore = calculateQuestionScore(questionId, value)
-    const newQuestionScores = { ...questionScores, [questionId]: rawScore }
-    setQuestionScores(newQuestionScores)
-
-    // 计算加权总分
-    const totalWeightedScore = allQuestions.reduce((sum, q) => {
-      const score = newQuestionScores[q.id] || 0
-      const weight = weights[q.id] || 0
-      return sum + (score * weight / 100)
-    }, 0)
+  useEffect(() => {
+    if (!isInitialLoadComplete.current) return
     
-    setScore('yellow-society', totalWeightedScore)
-  }
-
-  const handleWeightChange = (questionId: string, newWeight: number) => {
-    const newWeights = { ...weights, [questionId]: newWeight }
-    setWeights(newWeights)
-    setQuestionWeights('yellow-society', newWeights)
-    
-    // 重新计算加权总分
     const totalWeightedScore = allQuestions.reduce((sum, q) => {
       const score = questionScores[q.id] || 0
-      const weight = newWeights[q.id] || 0
+      const weight = weights[q.id] || 0
       return sum + (score * weight / 100)
     }, 0)
     
-    setScore('yellow-society', totalWeightedScore)
-  }
-
-  const normalizeWeights = () => {
-    const currentTotal = Object.values(weights).reduce((sum, w) => sum + w, 0)
-    if (currentTotal === 0) {
-      const avgWeight = parseFloat((100 / allQuestions.length).toFixed(2))
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = avgWeight
-      })
-      setWeights(newWeights)
-      setQuestionWeights('yellow-society', newWeights)
-    } else {
-      const factor = 100 / currentTotal
-      const newWeights: { [key: string]: number } = {}
-      allQuestions.forEach(q => {
-        newWeights[q.id] = parseFloat(((weights[q.id] || 0) * factor).toFixed(2))
-      })
-      setWeights(newWeights)
-      setQuestionWeights('yellow-society', newWeights)
-      const totalWeightedScore = allQuestions.reduce((sum, q) => {
-        const score = questionScores[q.id] || 0
-        const weight = newWeights[q.id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
+    if (Math.abs(totalWeightedScore - lastScoreRef.current) > 0.01) {
+      lastScoreRef.current = totalWeightedScore
       setScore('yellow-society', totalWeightedScore)
     }
-  }
+  }, [questionScores, weights])
+
+  useEffect(() => {
+    if (!isInitialLoadComplete.current || Object.keys(answers).length === 0) return
+    
+    const saveToFile = async () => {
+      try {
+        const storageAnswers: { [key: string]: string } = {}
+        Object.entries(answers).forEach(([key, val]) => {
+          storageAnswers[key] = Array.isArray(val) ? JSON.stringify(val) : val as string
+        })
+        
+        // 同时更新Context
+        saveAnswers('yellow-society', storageAnswers)
+        setQuestionWeights('yellow-society', weights)
+        
+        await ipcRenderer.invoke('save-to-file', {
+          dimension: 'yellow-society',
+          data: {
+            answers: storageAnswers,
+            questionWeights: weights,
+            questionScores: questionScores,
+            score: lastScoreRef.current
+          }
+        })
+      } catch (error) {
+        console.error('[QuestionPageYellow] Failed to save:', error)
+      }
+    }
+    
+    const timer = setTimeout(saveToFile, 500)
+    return () => clearTimeout(timer)
+  }, [answers, weights, questionScores])
+
+  const handleAnswerChange = React.useCallback((questionId: string, value: string | string[]) => {
+    console.log('[QuestionPageYellow] handleAnswerChange:', { questionId, value })
+    setAnswers(prevAnswers => ({
+      ...prevAnswers,
+      [questionId]: value
+    }))
+    
+    const rawScore = calculateQuestionScore(questionId, value)
+    console.log('[QuestionPageYellow] Score calculated:', { questionId, rawScore })
+    setQuestionScores(prevScores => ({
+      ...prevScores,
+      [questionId]: rawScore
+    }))
+  }, [])
+
+  const handleWeightChange = React.useCallback((questionId: string, newWeight: number) => {
+    setWeights(prevWeights => ({
+      ...prevWeights,
+      [questionId]: newWeight
+    }))
+  }, [])
+
+  const normalizeWeights = React.useCallback(() => {
+    setWeights(() => {
+      const newWeights: { [key: string]: number } = {}
+      const baseWeight = Math.floor(10000 / allQuestions.length) / 100
+      let sum = 0
+      
+      allQuestions.forEach((q, index) => {
+        if (index < allQuestions.length - 1) {
+          newWeights[q.id] = baseWeight
+          sum += baseWeight
+        } else {
+          newWeights[q.id] = parseFloat((100 - sum).toFixed(2))
+        }
+      })
+      
+      return newWeights
+    })
+  }, [])
 
   const totalWeightedScore = allQuestions.reduce((sum, q) => {
     const score = questionScores[q.id] || 0
@@ -301,8 +346,12 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                     <div className="multi-input-container">
                       {question.multiInputFields.map((field) => {
                         const currentValue = (() => {
+                          const answer = answers[question.id]
+                          if (typeof answer === 'object' && !Array.isArray(answer)) {
+                            return answer[field.name] || ''
+                          }
                           try {
-                            const data = JSON.parse(answers[question.id] as string || '{}')
+                            const data = JSON.parse((answer as string) || '{}')
                             return data[field.name] || ''
                           } catch {
                             return ''
@@ -317,14 +366,19 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                                 type="number"
                                 value={currentValue}
                                 onChange={(e) => {
-                                  try {
-                                    const data = JSON.parse(answers[question.id] as string || '{}')
-                                    data[field.name] = e.target.value
-                                    handleAnswerChange(question.id, JSON.stringify(data))
-                                  } catch {
-                                    const data = { [field.name]: e.target.value }
-                                    handleAnswerChange(question.id, JSON.stringify(data))
+                                  const answer = answers[question.id]
+                                  let data: any = {}
+                                  if (typeof answer === 'object' && !Array.isArray(answer)) {
+                                    data = { ...(answer as any) }
+                                  } else {
+                                    try {
+                                      data = JSON.parse((answer as string) || '{}')
+                                    } catch {
+                                      data = {}
+                                    }
                                   }
+                                  data[field.name] = e.target.value
+                                  handleAnswerChange(question.id, JSON.stringify(data))
                                 }}
                                 onWheel={(e) => e.currentTarget.blur()}
                                 onKeyDown={(e) => {
@@ -439,4 +493,4 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
   )
 }
 
-export default QuestionPageYellow
+export default React.memo(QuestionPageYellow)
