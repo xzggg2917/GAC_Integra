@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { dimensions } from '../data/algorithms'
 import { useDimension } from '../context/DimensionContext'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './InputPanel.css'
 
 const { ipcRenderer } = window.require('electron')
@@ -79,7 +80,14 @@ const InputPanel: React.FC = () => {
         </div>
         
         <label className="input-label total-score-label">Total Score</label>
-        <div className="total-score">
+        <div 
+          className="total-score"
+          style={{
+            borderColor: getQuestionScoreColor(getTotalScore()),
+            backgroundColor: `${getQuestionScoreColor(getTotalScore())}33`,
+            color: getQuestionScoreColor(getTotalScore())
+          }}
+        >
           {getTotalScore().toFixed(1)}
         </div>
       </div>

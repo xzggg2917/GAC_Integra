@@ -30,6 +30,13 @@
 
 .header-actions {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.file-buttons {
+  display: flex;
   gap: 12px;
   align-items: center;
 }
@@ -54,9 +61,15 @@
 
 .current-file {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 4px;
-  font-style: italic;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  font-weight: 500;
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 6px;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .file-button {
@@ -71,6 +84,17 @@
   align-items: center;
   gap: 8px;
   white-space: nowrap;
+}
+
+.new-button {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.new-button:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
 .save-button {

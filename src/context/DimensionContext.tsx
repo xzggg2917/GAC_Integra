@@ -26,7 +26,7 @@ interface DimensionContextType extends DimensionState {
   getAllData: () => DimensionState
   setCurrentFilePath: (path: string | null) => void
   getCurrentFilePath: () => string | null
-  createNewProject: () => void
+  createNewProject: () => Promise<void>
   hasEnteredApp: () => boolean
   markAppEntered: () => void
   isLoading: boolean
@@ -210,7 +210,7 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     return currentFilePath
   }
 
-  const createNewProject = () => {
+  const createNewProject = async () => {
     // 重置所有数据为初始状态
     setSelectedDimensions([])
     const initial: { [key: string]: number } = {}
@@ -222,6 +222,13 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
     setAllAnswers({})
     setQuestionWeights({})
     setCurrentFilePathState(null)
+    
+    // 清除 Electron 存储的上次文件路径
+    try {
+      await ipcRenderer.invoke('clear-last-file-path')
+    } catch (error) {
+      console.error('Failed to clear last file path:', error)
+    }
   }
 
   const hasEnteredApp = () => {
@@ -243,16 +250,18 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   }
 
   const getTotalWeight = () => {
-    return Object.values(customWeights)
-      .reduce((sum, weight) => sum + weight, 0)
+    return selectedDimensions.reduce((sum, dimensionId) => {
+      const weight = customWeights[dimensionId] || dimensions.find(d => d.id === dimensionId)?.defaultWeight || 0
+      return sum + weight
+    }, 0)
   }
 
   const getTotalScore = () => {
-    return Object.entries(scores)
-      .reduce((sum, [id, score]) => {
-        const weight = customWeights[id] || 0
-        return sum + (score * weight / 100)
-      }, 0)
+    return selectedDimensions.reduce((sum, dimensionId) => {
+      const score = scores[dimensionId] || 0
+      const weight = customWeights[dimensionId] || dimensions.find(d => d.id === dimensionId)?.defaultWeight || 0
+      return sum + (score * weight / 100)
+    }, 0)
   }
 
   const getWeight = (dimensionId: string) => {

@@ -2,6 +2,9 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Set application language to English
+app.commandLine.appendSwitch('lang', 'en-US');
+
 // 获取用户数据目录
 const userDataPath = app.getPath('userData');
 const autoSaveFilePath = path.join(userDataPath, 'gac-autosave.json');
@@ -41,6 +44,46 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }
+
+// Show confirmation dialog
+ipcMain.handle('show-confirm', async (event, options) => {
+  try {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    const result = await dialog.showMessageBox(focusedWindow, {
+      type: 'question',
+      buttons: options.buttons || ['OK', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      title: options.title || 'Confirm',
+      message: options.message || '',
+      noLink: true
+    });
+    
+    return { confirmed: result.response === 0 };
+  } catch (error) {
+    console.error('Show confirm dialog error:', error);
+    return { confirmed: false, error: error.message };
+  }
+});
+
+// Show alert dialog
+ipcMain.handle('show-alert', async (event, options) => {
+  try {
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    await dialog.showMessageBox(focusedWindow, {
+      type: options.type || 'info',
+      buttons: ['OK'],
+      title: options.title || 'Alert',
+      message: options.message || '',
+      noLink: true
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Show alert dialog error:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 // 处理保存文件
 ipcMain.handle('save-file', async (event, data) => {
@@ -279,6 +322,26 @@ ipcMain.handle('save-last-file-path', async (event, filePath) => {
     return { success: true };
   } catch (error) {
     console.error('Save last file path failed:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// 清除最后打开的文件路径
+ipcMain.handle('clear-last-file-path', async () => {
+  try {
+    if (fs.existsSync(lastFilePathStorage)) {
+      fs.unlinkSync(lastFilePathStorage);
+    }
+    if (fs.existsSync(appStateStorage)) {
+      fs.unlinkSync(appStateStorage);
+    }
+    if (fs.existsSync(currentPageStorage)) {
+      fs.unlinkSync(currentPageStorage);
+    }
+    console.log('[clear-last-file-path] Cleared all saved state');
+    return { success: true };
+  } catch (error) {
+    console.error('Clear last file path failed:', error);
     return { success: false, error: error.message };
   }
 });

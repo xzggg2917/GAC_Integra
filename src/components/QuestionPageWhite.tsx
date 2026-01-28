@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { whiteCompletenessModules } from '../data/whiteCompletenessQuestions'
 import { useDimension } from '../context/DimensionContext'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './QuestionPage.css'
 
 interface QuestionPageWhiteProps {
@@ -244,7 +244,7 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
   }, 0)
   
   const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(2))
-  const scoreColor = getScoreColor(totalWeightedScore, 100)
+  const scoreColor = getQuestionScoreColor(totalWeightedScore)
 
   return (
     <div className="question-page">
@@ -360,7 +360,7 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
                       <option value="">-- Select an option --</option>
                       {question.options?.map((option) => (
                         <option key={option.value} value={option.value}>
-                          {option.label} ({option.score} points)
+                          {option.label}
                         </option>
                       ))}
                     </select>
@@ -429,15 +429,16 @@ const QuestionPageWhite: React.FC<QuestionPageWhiteProps> = ({ onClose }) => {
                 const rawScore = questionScores[question.id] || 0
                 const weight = weights[question.id] || 0
                 const weightedScore = rawScore * weight / 100
+                const rawScoreColor = getQuestionScoreColor(rawScore)
                 return (
                   <div key={question.id} className="score-item">
                     <div className="score-item-header">
                       <span className="score-question-label">Q{index + 1}</span>
-                      <span className="score-raw">{rawScore.toFixed(1)}/100</span>
+                      <span className="score-raw" style={{ color: rawScoreColor }}>{rawScore.toFixed(1)}/100</span>
                     </div>
                     <div className="score-item-details">
                       <span className="score-weight">{weight.toFixed(1)}% weight</span>
-                      <span className="score-weighted" style={{ color: scoreColor }}>
+                      <span className="score-weighted" style={{ color: 'white' }}>
                         = {weightedScore.toFixed(2)}
                       </span>
                     </div>

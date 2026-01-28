@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
 import { useDimension } from '../context/DimensionContext'
 import { dimensions } from '../data/algorithms'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import { greenEcologyModules } from '../data/greenEcologyQuestions'
 import { bluePracticalityModules } from '../data/bluePracticalityQuestions'
 import { grayIndustryModules } from '../data/grayIndustryQuestions'
@@ -10,6 +10,8 @@ import { yellowSocietyModules } from '../data/yellowSocietyQuestions'
 import { cyanDataModules } from '../data/cyanDataQuestions'
 import { orangeCircularModules } from '../data/orangeCircularQuestions'
 import { violetInnovationModules } from '../data/violetInnovationQuestions'
+import { redPerformanceModules } from '../data/redPerformanceQuestions'
+import { whiteCompletenessModules } from '../data/whiteCompletenessQuestions'
 import './VisualizationPage.css'
 
 interface VisualizationPageProps {
@@ -22,22 +24,6 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
   const [showTextReport, setShowTextReport] = useState(false)
   const chartRef = useRef<any>(null)
 
-  // Cleanup chart instance on unmount
-  useEffect(() => {
-    return () => {
-      if (chartRef.current) {
-        const echartsInstance = chartRef.current.getEchartsInstance()
-        if (echartsInstance && typeof echartsInstance.dispose === 'function') {
-          try {
-            echartsInstance.dispose()
-          } catch (error) {
-            // Silently ignore disposal errors
-          }
-        }
-      }
-    }
-  }, [])
-
   // Convert dimension data to chart format
   const chartData = useMemo(() => {
     // Get all question modules
@@ -48,7 +34,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       'yellow-society': yellowSocietyModules,
       'cyan-data': cyanDataModules,
       'orange-circular': orangeCircularModules,
-      'violet-innovation': violetInnovationModules
+      'violet-innovation': violetInnovationModules,
+      'red-performance': redPerformanceModules,
+      'white-completeness': whiteCompletenessModules
     }
 
     // Helper function to calculate question score (now returns 0-100 scale)
@@ -71,22 +59,24 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       }
 
       // Handle multi-reagent type (Green Ecology Q3)
-      if (question.type === 'multi-reagent' && typeof parsedAnswer === 'string') {
+      if (question.type === 'multi-reagent') {
         try {
-          const reagents = JSON.parse(parsedAnswer || '[]')
+          // parsedAnswer might already be parsed as array, or still be a string
+          let reagents = parsedAnswer
+          if (typeof parsedAnswer === 'string') {
+            reagents = JSON.parse(parsedAnswer || '[]')
+          }
           if (!Array.isArray(reagents) || reagents.length === 0) return 0
           
           let sum = 0
-          let hasValidInput = false
           for (const reagent of reagents) {
             const mass = parseFloat(reagent.mass || '0')
             const hcodes = parseFloat(reagent.hcodes || '0')
             if (!isNaN(mass) && !isNaN(hcodes) && mass >= 0 && hcodes >= 0) {
-              if (mass > 0 || hcodes > 0) hasValidInput = true
               sum += mass * Math.pow(hcodes, 2)
             }
           }
-          if (!hasValidInput) return 0
+          
           return 100 * Math.exp(-1.5 * Math.sqrt(sum))
         } catch {
           return 0
@@ -95,6 +85,30 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
 
       if (question.type === 'multi-input' && typeof parsedAnswer === 'object') {
         try {
+          // Red Performance (Dimension 3)
+          if (dimId === 'red-performance') {
+            if (questionId === 'q4') {
+              const recovery = parseFloat(parsedAnswer.recovery)
+              const rsd = parseFloat(parsedAnswer.rsd)
+              if (!isNaN(recovery) && !isNaN(rsd) && recovery > 0 && rsd >= 0) {
+                const accuracyTerm = Math.exp(-0.5 * Math.pow((recovery - 100) / 3, 2))
+                const precisionTerm = 1 / (1 + Math.pow(rsd / 2.5, 2))
+                return 100 * accuracyTerm * precisionTerm
+              }
+            }
+            if (questionId === 'q5') {
+              const r2 = parseFloat(parsedAnswer.r2)
+              const lod = parseFloat(parsedAnswer.lod)
+              const creq = parseFloat(parsedAnswer.creq || '1')
+              if (!isNaN(r2) && !isNaN(lod) && !isNaN(creq) && r2 >= 0.99 && r2 <= 1.0 && lod >= 0 && creq > 0) {
+                const linearityTerm = Math.pow((r2 - 0.99) / 0.0099, 4)
+                const sensitivityTerm = Math.cos((Math.PI / 2) * (lod / creq))
+                const score = 100 * linearityTerm * sensitivityTerm
+                return Math.max(0, score)
+              }
+            }
+          }
+          
           // Green Ecology (Dimension 1)
           if (dimId === 'green-ecology') {
             if (questionId === 'q4') {
@@ -224,7 +238,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
               const x = parseFloat(parsedAnswer.x)
               const y = parseFloat(parsedAnswer.y)
               if (isNaN(x) || isNaN(y)) return 0
-              return 100 * (Math.sqrt(x - 10) / 10) * (1 - Math.pow(0.5, y)) * 1.143
+              if (x <= 0) return 0
+              return 100 * Math.sqrt(x / 10) * (1 - Math.pow(0.5, y)) * 1.143
             }
           }
           
@@ -247,6 +262,30 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
               const Hlife = parseFloat(parsedAnswer.Hlife)
               if (isNaN(D28) || isNaN(Hlife)) return 0
               return 60 * Math.sqrt((D28 / 100) * (1 - Hlife / (Hlife + 100))) + 30
+            }
+          }
+          
+          // Violet Innovation (Dimension 4)
+          if (dimId === 'violet-innovation') {
+            if (questionId === 'q3') {
+              const vt = parseFloat(parsedAnswer.vt)
+              const jp = parseFloat(parsedAnswer.jp)
+              if (isNaN(vt) || isNaN(jp)) return 0
+              return 100 * (1 - Math.exp(-0.1 * Math.pow(vt, 2) * Math.sqrt(jp + 1)))
+            }
+            if (questionId === 'q4') {
+              const ls = parseFloat(parsedAnswer.ls)
+              const dsa = parseFloat(parsedAnswer.dsa)
+              if (isNaN(ls) || isNaN(dsa)) return 0
+              const product = ls * dsa
+              return 100 * Math.pow(product, 2) / (Math.pow(product, 2) + 1.5)
+            }
+            if (questionId === 'q5') {
+              const nr = parseFloat(parsedAnswer.nr)
+              const ma = parseFloat(parsedAnswer.ma)
+              if (isNaN(nr) || isNaN(ma)) return 0
+              const product = nr * ma
+              return 100 * Math.sin(Math.PI / 2 * product / (product + 5))
             }
           }
           
@@ -338,7 +377,7 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         }
 
         // Calculate color based on question score (0-100 scale)
-        const questionColor = getScoreColor(questionScore, 100)
+        const questionColor = getQuestionScoreColor(questionScore)
         const weightedScore = (questionScore * questionWeight) / 100
 
         // Handle both data structures: 'question' field (standard) and 'text' field (cyan-data)
@@ -351,6 +390,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           itemStyle: {
             color: questionColor
           },
+          label: {
+            color: dimension?.color || '#fff' // Use dimension theme color for question labels
+          },
           dimensionName: dimension?.name || dimId,
           questionText: questionText,
           answerText: answerDisplay,
@@ -362,20 +404,42 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
       })
 
       // Calculate color based on dimension total score (now 0-100 scale)
-      const dimensionColor = getScoreColor(score, 100)
+      const dimensionColor = getQuestionScoreColor(score)
 
       // Calculate total weight sum for this dimension (should be 100)
       const totalWeight = questionChildren.reduce((sum, child) => sum + child.value, 0)
 
+      // Create meaningful abbreviation based on pronunciation
+      const dimName = dimension?.name || dimId
+      const abbreviationMap: { [key: string]: string } = {
+        'Ecology': 'Eco',
+        'Practicality': 'Prac',
+        'Performance': 'Perf',
+        'Innovation': 'Inno',
+        'Industry': 'Ind',
+        'Society': 'Soc',
+        'Data': 'Data',
+        'Circular': 'Circ',
+        'Completeness': 'Comp'
+      }
+      const abbreviation = abbreviationMap[dimName] || dimName.substring(0, 4)
+
       return {
-        name: dimension?.name || dimId,
+        name: abbreviation, // Use abbreviation as name
+        fullName: dimName,  // Keep full name for tooltip
         value: totalWeight, // Use total weight (100) for dimension size
         itemStyle: {
-          color: dimensionColor
+          color: dimensionColor,
+          borderColor: dimension?.color || '#fff', // Use dimension theme color as border
+          borderWidth: 4
+        },
+        label: {
+          color: dimension?.color || '#fff' // Set dimension-specific label color
         },
         children: questionChildren.length > 0 ? questionChildren : undefined,
         dimensionScore: score,
-        dimensionMaxScore: 100 // Now using 100-point scale
+        dimensionMaxScore: 100, // Now using 100-point scale
+        themeColor: dimension?.color || '#fff' // Keep for tooltip reference
       }
     })
 
@@ -422,8 +486,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         }
         
         // Dimension node
+        const displayName = data.fullName || data.name
         return `<div style="padding: 6px;">
-          <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">${data.name}</div>
+          <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">${displayName}</div>
           <div style="color: #10b981; font-weight: bold;">Total Score: ${info.value.toFixed(1)}</div>
         </div>`
       }
@@ -449,7 +514,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           },
           color: '#fff',
           fontSize: 12,
-          overflow: 'truncate'
+          fontWeight: 'bold',
+          overflow: 'truncate',
+          textBorderColor: 'rgba(0, 0, 0, 0.8)',
+          textBorderWidth: 2
         },
         breadcrumb: {
           show: false
@@ -514,8 +582,9 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
         // Dimension node
         const dimScore = data.dimensionScore !== undefined ? data.dimensionScore : info.value
         const dimMaxScore = data.dimensionMaxScore || 100
+        const displayName = data.fullName || data.name // Use full name for tooltip
         return `<div style="padding: 8px;">
-          <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #60a5fa;">${data.name}</div>
+          <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #60a5fa;">${displayName}</div>
           <div style="color: #10b981; font-weight: bold; font-size: 14px;">Total Score: ${dimScore.toFixed(1)} / ${dimMaxScore}</div>
           <div style="color: #94a3b8; font-size: 12px; margin-top: 4px;">Questions: ${data.children?.length || 0}</div>
         </div>`
@@ -554,8 +623,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
               rotate: 'radial',
               align: 'center',
               fontSize: 15,
-              fontWeight: 'bold',
-              color: '#fff'
+              fontWeight: 'bold'
+              // Color is set per-item via data.label.color
             },
             itemStyle: {
               borderWidth: 3
@@ -566,7 +635,10 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
             r0: '45%',
             r: '90%',
             label: {
-              show: false // Hide all labels on outer ring to avoid clutter
+              rotate: 'radial',
+              fontSize: 11,
+              fontWeight: 'bold'
+              // Color is set per-item via data.label.color
             },
             itemStyle: {
               borderWidth: 1
@@ -590,16 +662,33 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
   // Generate text report
   const textReport = useMemo(() => {
     const totalScore = getTotalScore()
+    
+    // Get all question modules (same as in chartData)
+    const allModules = {
+      'green-ecology': greenEcologyModules,
+      'blue-practicality': bluePracticalityModules,
+      'gray-industry': grayIndustryModules,
+      'yellow-society': yellowSocietyModules,
+      'cyan-data': cyanDataModules,
+      'orange-circular': orangeCircularModules,
+      'violet-innovation': violetInnovationModules,
+      'red-performance': redPerformanceModules,
+      'white-completeness': whiteCompletenessModules
+    }
+    
     const reports = selectedDimensions.map(dimId => {
       const dimension = dimensions.find(d => d.id === dimId)
       const score = scores[dimId] || 0
       const answers = allAnswers[dimId] || {}
-      const questionCount = Object.keys(answers).length
+      
+      // Get actual question count from dimension modules
+      const modules = allModules[dimId as keyof typeof allModules]
+      const questionCount = modules?.flatMap((m: any) => m.questions).length || 0
+      
       const avgScore = questionCount > 0 ? score / questionCount : 0
       
-      // Calculate score color based on actual score vs max (100 points per dimension)
-      const maxScore = 100
-      const scoreColor = getScoreColor(score, maxScore)
+      // Calculate score color based on actual score (100 points per dimension)
+      const scoreColor = getQuestionScoreColor(score)
 
       return {
         dimension: dimension?.name || dimId,

@@ -18,9 +18,39 @@ import './App.css'
 const { ipcRenderer } = window.require('electron')
 
 function MainContent({ setActiveDimension, setShowVisualization }: { setActiveDimension: (dim: string | null) => void, setShowVisualization: (show: boolean) => void }) {
-  const { getAllData, loadAllData, getCurrentFilePath, setCurrentFilePath } = useDimension()
+  const { getAllData, loadAllData, getCurrentFilePath, setCurrentFilePath, createNewProject } = useDimension()
   const [saveStatus, setSaveStatus] = useState<string>('')
   const currentFile = getCurrentFilePath()
+
+  const handleNew = async () => {
+    try {
+      const result = await ipcRenderer.invoke('show-confirm', {
+        title: 'New Project',
+        message: 'Create a new project? All unsaved changes will be lost.',
+        buttons: ['OK', 'Cancel']
+      })
+      
+      if (result.confirmed) {
+        await createNewProject()
+        
+        // 立即弹出保存对话框，让用户选择新文件的位置
+        const saveResult = await ipcRenderer.invoke('save-file', getAllData())
+        
+        if (saveResult.success) {
+          setCurrentFilePath(saveResult.filePath)
+          setSaveStatus('✓ New project created')
+          setTimeout(() => setSaveStatus(''), 3000)
+        } else if (!saveResult.cancelled) {
+          setSaveStatus('✗ Failed to create project')
+          setTimeout(() => setSaveStatus(''), 3000)
+        }
+      }
+    } catch (error) {
+      console.error('New project dialog error:', error)
+      setSaveStatus('✗ Failed to create project')
+      setTimeout(() => setSaveStatus(''), 3000)
+    }
+  }
 
   const handleSave = async () => {
     try {
@@ -73,15 +103,20 @@ function MainContent({ setActiveDimension, setShowVisualization }: { setActiveDi
           <div className="header-title">
             <h1>GAC Integra</h1>
             <p className="subtitle">Green Analytical Chemistry Integration Platform</p>
-            {currentFile && <p className="current-file">📄 {currentFile.split('\\').pop()?.split('/').pop()}</p>}
           </div>
           <div className="header-actions">
-            <button className="file-button save-button" onClick={handleSave}>
-              💾 Save As...
-            </button>
-            <button className="file-button open-button" onClick={handleOpen}>
-              📂 Open File
-            </button>
+            {currentFile && <p className="current-file">📄 {currentFile.split('\\').pop()?.split('/').pop()}</p>}
+            <div className="file-buttons">
+              <button className="file-button new-button" onClick={handleNew} title="Create a new project">
+                📝 New File
+              </button>
+              <button className="file-button save-button" onClick={handleSave}>
+                💾 Save As...
+              </button>
+              <button className="file-button open-button" onClick={handleOpen}>
+                📂 Open File
+              </button>
+            </div>
           </div>
         </div>
         {saveStatus && <div className="save-status-header">{saveStatus}</div>}

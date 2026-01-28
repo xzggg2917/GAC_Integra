@@ -1,8 +1,10 @@
 import React from 'react'
 import { dimensions } from '../data/algorithms'
 import { useDimension } from '../context/DimensionContext'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './DimensionGrid.css'
+
+const { ipcRenderer } = window.require('electron')
 
 interface DimensionGridProps {
   onDimensionClick: (dimensionId: string) => void
@@ -12,12 +14,16 @@ interface DimensionGridProps {
 const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisualize }) => {
   const { getWeight, scores, getTotalWeight } = useDimension()
 
-  const handleVisualize = () => {
+  const handleVisualize = async () => {
     const totalWeight = getTotalWeight()
     
     // Check if total weight is exactly 100%
     if (Math.abs(totalWeight - 100) > 0.01) {
-      alert(`⚠️ Weight Validation Failed\n\nThe total weight of selected dimensions must equal 100%.\n\nCurrent total: ${totalWeight.toFixed(1)}%\n\nPlease adjust the weights in the "Custom Weights" section above.`)
+      await ipcRenderer.invoke('show-alert', {
+        type: 'warning',
+        title: 'Weight Validation Failed',
+        message: `The total weight of selected dimensions must equal 100%.\n\nCurrent total: ${totalWeight.toFixed(1)}%\n\nPlease adjust the weights in the "Custom Weights" section above.`
+      })
       return
     }
     
@@ -30,8 +36,7 @@ const DimensionGrid: React.FC<DimensionGridProps> = ({ onDimensionClick, onVisua
         {dimensions.map((dimension) => {
           const weight = getWeight(dimension.id)
           const score = scores[dimension.id] || 0
-          const maxScore = 100 // 每个维度满分100
-          const cardColor = getScoreColor(score, maxScore)
+          const cardColor = getQuestionScoreColor(score)
           const hasQuestions = ['green-ecology', 'blue-practicality', 'red-performance', 'white-completeness', 'gray-industry', 'yellow-society', 'cyan-data', 'orange-circular', 'violet-innovation'].includes(dimension.id)
 
           return (

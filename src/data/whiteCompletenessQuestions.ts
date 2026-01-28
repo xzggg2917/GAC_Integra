@@ -37,11 +37,11 @@ export const whiteCompletenessModules: Module[] = [
         question: 'Q1: Causal Chain Clarity - Evaluate the clarity and transparency of the causal relationships and physicochemical conversion logic in the evaluation process from sample pretreatment, separation to detection',
         type: 'select',
         options: [
-          { value: '100', label: 'A: Completely transparent - Every intermediate state has mature microscale dynamics or thermodynamic support', score: 100 },
-          { value: '75', label: 'B: Mainly clear - Main processes have theoretical support, only a few boundary effects or secondary reactions have minor empirical assumptions', score: 75 },
-          { value: '50', label: 'C: Logically discontinuous - Known certain operations are effective but microscopic mechanism is in academic debate or only passes qualitative analogy comparison', score: 50 },
-          { value: '25', label: 'D: Theoretically weak - Method design mainly references similar instrument parameters, lacks systematic rigorous deduction for system itself', score: 25 },
-          { value: '0', label: 'E: Logically contradictory - Method is entirely built on trial and error basis, processes oppose operating principles (Trial and Error), or are described as black box', score: 0 }
+          { value: 'completely-transparent', label: 'A: Completely transparent - Every intermediate state has mature microscale dynamics or thermodynamic support', score: 100 },
+          { value: 'mainly-clear', label: 'B: Mainly clear - Main processes have theoretical support, only a few boundary effects or secondary reactions have minor empirical assumptions', score: 75 },
+          { value: 'logically-discontinuous', label: 'C: Logically discontinuous - Known certain operations are effective but microscopic mechanism is in academic debate or only passes qualitative analogy comparison', score: 50 },
+          { value: 'theoretically-weak', label: 'D: Theoretically weak - Method design mainly references similar instrument parameters, lacks systematic rigorous deduction for system itself', score: 25 },
+          { value: 'logically-contradictory', label: 'E: Logically contradictory - Method is entirely built on trial and error basis, processes oppose operating principles (Trial and Error), or are described as black box', score: 0 }
         ]
       },
       {
@@ -50,11 +50,11 @@ export const whiteCompletenessModules: Module[] = [
         question: 'Q2: Predictive Logic - Evaluate whether the existing theoretical model can be validated in advance to predict variation trends when environmental parameters (such as temperature, pH, substrate) change',
         type: 'select',
         options: [
-          { value: '100', label: 'A: Strong deductive演绎 ability - Based on theoretical formulas can immediately calculate impact of variable changes', score: 100 },
-          { value: '75', label: 'B: Directionally accurate prediction - Can predict result trends qualitatively, but quantitative deviation requires experimental verification', score: 75 },
-          { value: '50', label: 'C: Empirical judgment - Relies on past experience with similar samples for processing prediction, lacks strict formula derivation', score: 50 },
-          { value: '25', label: 'D: Frequently inaccurate prediction - Predictions frequently fail, interference impacts exceed theoretical predictions', score: 25 },
-          { value: '0', label: 'E: Completely unpredictive - Every new situation requires extensive trial and error experiments to confirm rules', score: 0 }
+          { value: 'strong-deductive', label: 'A: Strong deductive ability - Based on theoretical formulas can immediately calculate impact of variable changes', score: 100 },
+          { value: 'directionally-accurate', label: 'B: Directionally accurate prediction - Can predict result trends qualitatively, but quantitative deviation requires experimental verification', score: 75 },
+          { value: 'empirical-judgment', label: 'C: Empirical judgment - Relies on past experience with similar samples for processing prediction, lacks strict formula derivation', score: 50 },
+          { value: 'frequently-inaccurate', label: 'D: Frequently inaccurate prediction - Predictions frequently fail, interference impacts exceed theoretical predictions', score: 25 },
+          { value: 'completely-unpredictive', label: 'E: Completely unpredictive - Every new situation requires extensive trial and error experiments to confirm rules', score: 0 }
         ]
       }
     ]

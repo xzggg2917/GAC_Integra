@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { violetInnovationModules } from '../data/violetInnovationQuestions'
 import { useDimension } from '../context/DimensionContext'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './QuestionPage.css'
 
 interface QuestionPageVioletProps {
@@ -42,7 +42,7 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
   }, 0)
   
   const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(2))
-  const scoreColor = getScoreColor(totalWeightedScore, 100)
+  const scoreColor = getQuestionScoreColor(totalWeightedScore)
 
   const calculateQuestionScore = (questionId: string, answer: any): number => {
     const question = violetInnovationModules
@@ -145,17 +145,25 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
       }
       
       const savedAnswers = getAnswers('violet-innovation')
+      console.log('[QuestionPageViolet] Saved answers from context:', savedAnswers)
+      
       if (Object.keys(savedAnswers).length > 0) {
         const parsedAnswers: { [key: string]: any } = {}
         Object.entries(savedAnswers).forEach(([key, val]) => {
+          console.log(`[QuestionPageViolet] Processing answer ${key}:`, val, 'type:', typeof val)
           try {
             // 尝试解析JSON字符串
-            parsedAnswers[key] = JSON.parse(val)
+            const parsed = JSON.parse(val)
+            parsedAnswers[key] = parsed
+            console.log(`[QuestionPageViolet] Parsed ${key} as JSON:`, parsed)
           } catch {
-            // 如果解析失败，直接使用原值
+            // 如果解析失败，直接使用原值（select类型的简单字符串）
             parsedAnswers[key] = val
+            console.log(`[QuestionPageViolet] Using raw value for ${key}:`, val)
           }
         })
+        
+        console.log('[QuestionPageViolet] Final parsed answers:', parsedAnswers)
         setAnswers(parsedAnswers)
         
         const scores: { [key: string]: number } = {}
@@ -203,10 +211,20 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
 
   // 答案保存useEffect
   useEffect(() => {
-    if (!isInitialLoadComplete.current || Object.keys(answers).length === 0) return
+    if (!isInitialLoadComplete.current) {
+      console.log('[QuestionPageViolet] Save skipped - initial load not complete')
+      return
+    }
+    
+    if (Object.keys(answers).length === 0) {
+      console.log('[QuestionPageViolet] Save skipped - no answers')
+      return
+    }
     
     const saveToFile = async () => {
       try {
+        console.log('[QuestionPageViolet] Saving answers:', answers)
+        
         // 序列化答案：如果是对象，转换为JSON字符串
         const serializedAnswers: { [key: string]: string } = {}
         Object.entries(answers).forEach(([key, val]) => {
@@ -216,6 +234,8 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
             serializedAnswers[key] = JSON.stringify(val)
           }
         })
+        
+        console.log('[QuestionPageViolet] Serialized answers:', serializedAnswers)
         
         // 同时更新Context
         saveAnswers('violet-innovation', serializedAnswers)
@@ -230,6 +250,8 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
             score: lastScoreRef.current
           }
         })
+        
+        console.log('[QuestionPageViolet] Save completed successfully')
       } catch (error) {
         console.error('[QuestionPageViolet] Failed to save:', error)
       }
@@ -477,15 +499,16 @@ const QuestionPageViolet: React.FC<QuestionPageVioletProps> = ({ onClose }) => {
                 const rawScore = questionScores[question.id] || 0
                 const weight = weights[question.id] || 0
                 const weightedScore = rawScore * weight / 100
+                const rawScoreColor = getQuestionScoreColor(rawScore)
                 return (
                   <div key={question.id} className="score-item">
                     <div className="score-item-header">
                       <span className="score-question-label">Q{index + 1}</span>
-                      <span className="score-raw">{rawScore.toFixed(1)}/100</span>
+                      <span className="score-raw" style={{ color: rawScoreColor }}>{rawScore.toFixed(1)}/100</span>
                     </div>
                     <div className="score-item-details">
                       <span className="score-weight">{weight.toFixed(1)}% weight</span>
-                      <span className="score-weighted" style={{ color: scoreColor }}>
+                      <span className="score-weighted" style={{ color: 'white' }}>
                         = {weightedScore.toFixed(2)}
                       </span>
                     </div>

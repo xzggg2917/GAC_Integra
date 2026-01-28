@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { cyanDataModules } from '../data/cyanDataQuestions'
 import { useDimension } from '../context/DimensionContext'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './QuestionPage.css'
 
 interface QuestionPageCyanProps {
@@ -73,16 +73,15 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
         }
         
         // Q5: Metadata & Redundancy Index
-        // Formula: Score = 100 × √(x-10)/10 × (1-0.5^y) × 1.143
+        // Formula: Score = 100 × √(x/10) × (1-0.5^y) × 1.143
         // Note: 1.143 is normalization coefficient, ensures x=10, y=3 equals 100
         if (questionId === 'q5') {
           const x = parseFloat(data.x)
           const y = parseFloat(data.y)
           if (isNaN(x) || isNaN(y)) return 0
+          if (x <= 0) return 0 // x must be positive
           
-          if (x < 10) return 0 // When x < 10, square root of negative is undefined
-          
-          return 100 * Math.sqrt(x - 10) / 10 * (1 - Math.pow(0.5, y)) * 1.143
+          return 100 * Math.sqrt(x / 10) * (1 - Math.pow(0.5, y)) * 1.143
         }
         
         return 0
@@ -231,7 +230,7 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
   }, 0)
   
   const totalWeight = parseFloat(Object.values(weights).reduce((sum, w) => sum + w, 0).toFixed(2))
-  const scoreColor = getScoreColor(totalWeightedScore, 100)
+  const scoreColor = getQuestionScoreColor(totalWeightedScore)
 
   return (
     <div className="question-page">
@@ -415,15 +414,16 @@ const QuestionPageCyan: React.FC<QuestionPageCyanProps> = ({ onClose }) => {
                 const rawScore = questionScores[question.id] || 0
                 const weight = weights[question.id] || 0
                 const weightedScore = rawScore * weight / 100
+                const rawScoreColor = getQuestionScoreColor(rawScore)
                 return (
                   <div key={question.id} className="score-item">
                     <div className="score-item-header">
                       <span className="score-question-label">Q{index + 1}</span>
-                      <span className="score-raw">{rawScore.toFixed(1)}/100</span>
+                      <span className="score-raw" style={{ color: rawScoreColor }}>{rawScore.toFixed(1)}/100</span>
                     </div>
                     <div className="score-item-details">
                       <span className="score-weight">{weight.toFixed(1)}% weight</span>
-                      <span className="score-weighted" style={{ color: scoreColor }}>
+                      <span className="score-weighted" style={{ color: 'white' }}>
                         = {weightedScore.toFixed(2)}
                       </span>
                     </div>

@@ -44,12 +44,16 @@
       "output": "release"
     },
     "files": [
-      "dist/**/*"
+      "dist/**/*",
+      "electron/**/*"
     ],
     "win": {
       "target": [
         "nsis"
       ]
+    },
+    "nsis": {
+      "language": "1033"
     }
   }
 }

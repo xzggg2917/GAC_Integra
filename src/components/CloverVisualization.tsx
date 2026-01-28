@@ -1,5 +1,5 @@
 import React from 'react'
-import { getScoreColor } from '../utils/colorUtils'
+import { getQuestionScoreColor } from '../utils/colorUtils'
 import './CloverVisualization.css'
 
 interface Module {
@@ -64,7 +64,7 @@ const CloverVisualization: React.FC<CloverVisualizationProps> = ({ modules }) =>
         {/* Clover leaves */}
         {modules.slice(0, 3).map((module, index) => {
           const percentage = (module.score / module.maxScore) * 100
-          const leafColor = getScoreColor(module.score, module.maxScore)
+          const leafColor = getQuestionScoreColor(module.score)
           
           return (
             <g key={module.id}>
