@@ -88,7 +88,8 @@ ipcMain.handle('show-alert', async (event, options) => {
 // 处理保存文件
 ipcMain.handle('save-file', async (event, data) => {
   try {
-    const { filePath } = await dialog.showSaveDialog({
+    const focusedWindow = BrowserWindow.getFocusedWindow()
+    const { filePath } = await dialog.showSaveDialog(focusedWindow, {
       title: 'Save GAC Assessment',
       defaultPath: 'gac-assessment.json',
       filters: [
@@ -98,11 +99,32 @@ ipcMain.handle('save-file', async (event, data) => {
     });
 
     if (filePath) {
+      // Check if file exists and ask for confirmation with our custom dialog
+      if (fs.existsSync(filePath)) {
+        const fileName = path.basename(filePath)
+        const confirmResult = await dialog.showMessageBox(focusedWindow, {
+          type: 'question',
+          buttons: ['Replace', 'Cancel'],
+          defaultId: 0,
+          cancelId: 1,
+          title: 'Confirm Save As',
+          message: `${fileName} already exists.`,
+          detail: 'Do you want to replace it?',
+          noLink: true
+        });
+        
+        // If user clicked Cancel
+        if (confirmResult.response === 1) {
+          return { success: false, cancelled: true };
+        }
+      }
+      
       fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
       return { success: true, filePath };
     }
     return { success: false, cancelled: true };
   } catch (error) {
+    console.error('Save file error:', error);
     return { success: false, error: error.message };
   }
 });

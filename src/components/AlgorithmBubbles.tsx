@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { algorithms } from '../data/algorithms'
+import { dimensions } from '../data/algorithms'
 import './AlgorithmBubbles.css'
 
 interface Bubble {
@@ -39,7 +39,7 @@ const AlgorithmBubbles: React.FC = () => {
     const width = container.clientWidth;
     const height = container.clientHeight;
 
-    const initialBubbles: Bubble[] = algorithms.map((algo) => {
+    const initialBubbles: Bubble[] = dimensions.map((algo: any) => {
       const radius = 50 + Math.random() * 30;
       return {
         id: algo.id,

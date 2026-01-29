@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "build:electron": "electron-builder",
     "preview": "vite preview"
   },
@@ -40,8 +40,10 @@
   "build": {
     "appId": "com.gac.integra",
     "productName": "GAC Integra",
+    "copyright": "Copyright © 2026",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -49,11 +51,22 @@
     ],
     "win": {
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
     },
     "nsis": {
-      "language": "1033"
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "language": "1033",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GAC Integra"
     }
   }
 }

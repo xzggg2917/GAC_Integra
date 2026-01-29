@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 v 开头的标签时触发（如 v1.0.0）
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build application
+        run: |
+          npm run build
+          npm run build:electron
+          
+      - name: Get version
+        id: version
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: |
+            release/*.exe
+          draft: false
+          prerelease: false
+          name: GAC Integra v${{ steps.version.outputs.version }}
+          body: |
+            ## GAC Integra v${{ steps.version.outputs.version }}
+            
+            ### Green Analytical Chemistry Integration Platform
+            
+            **New Release Available!**
+            
+            Download the installer below to get started with comprehensive multi-dimensional assessment for green analytical chemistry.
+            
+            ### Installation
+            1. Download `GAC Integra Setup ${{ steps.version.outputs.version }}.exe`
+            2. Run the installer
+            3. Follow the setup wizard
+            4. Launch GAC Integra from your desktop or start menu
+            
+            ### Features
+            - 🌱 9-dimensional green chemistry assessment
+            - 📊 Interactive visualization (Treemap & Sunburst)
+            - 💾 Project save and load functionality
+            - ⚖️ Customizable dimension weights
+            - 📈 Real-time score calculation
+            
+            ### System Requirements
+            - Windows 10 or later (64-bit)
+            - 100 MB free disk space
+            
+            ---
+            For issues or questions, please visit the [Issues](https://github.com/${{ github.repository }}/issues) page.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: release/*.exe
+          retention-days: 30
