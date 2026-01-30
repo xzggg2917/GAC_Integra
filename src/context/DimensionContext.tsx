@@ -56,50 +56,22 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   // 使用 ref 来防止在初始加载时触发自动保存
   const isInitialMount = useRef(true)
 
-  // 应用启动时检查上次打开的文件路径和应用状态
+  // 应用启动时的初始化 - 始终从登录界面开始
   useEffect(() => {
-    const loadLastFile = async () => {
+    const initApp = async () => {
       try {
-        const result = await ipcRenderer.invoke('auto-load')
-        
-        if (result.success) {
-          let shouldEnter = false
-          
-          // 如果auto-load直接返回了数据，使用它
-          if (result.data) {
-            if (result.data.selectedDimensions) setSelectedDimensions(result.data.selectedDimensions)
-            if (result.data.customWeights) setCustomWeights(result.data.customWeights)
-            if (result.data.scores) setScores(result.data.scores)
-            if (result.data.allAnswers) setAllAnswers(result.data.allAnswers)
-            if (result.data.questionWeights) setQuestionWeights(result.data.questionWeights)
-            console.log('Data loaded from auto-load')
-          }
-          
-          if (result.lastFilePath) {
-            setCurrentFilePathState(result.lastFilePath)
-            shouldEnter = true
-          }
-          
-          if (result.appEntered === true) {
-            shouldEnter = true
-          }
-          
-          if (result.currentPage) {
-            setCurrentPageState(result.currentPage)
-          }
-          
-          if (shouldEnter) {
-            setAppEntered(true)
-          }
-        }
+        // 不自动加载之前的状态，每次都从登录界面开始
+        // const result = await ipcRenderer.invoke('auto-load')
+        // 保持初始状态，不加载任何数据
+        console.log('App initialized - showing cover page')
       } catch (error) {
-        console.error('Failed to load app state:', error)
+        console.error('Failed to initialize app:', error)
       } finally {
         setIsLoaded(true)
         isInitialMount.current = false
       }
     }
-    loadLastFile()
+    initApp()
   }, [])
 
   // 数据变化时的自动保存已移到各个维度页面
@@ -233,7 +205,8 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const hasEnteredApp = () => {
     if (!isLoaded) return false
-    return appEntered || currentFilePath !== null
+    // 只有用户明确进入应用后才返回true，不再根据currentFilePath判断
+    return appEntered
   }
 
   const markAppEntered = async () => {
