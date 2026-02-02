@@ -231,21 +231,21 @@ export const orangeCircularModules: Module[] = [
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">100</td>
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">1</td>
               <td style="padding: 8px; border-bottom: 1px solid #eee;">Unstable, rapidly converts to harmless substances</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">No machine, oxidized gas</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Inorganic salts, Hydrogen peroxide</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee;">L2: Excellent degradation</td>
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">95</td>
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">3</td>
               <td style="padding: 8px; border-bottom: 1px solid #eee;">Extremely easily utilized by microorganisms</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">Ethanol, glycerol, glucose</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Ethanol, Acetic acid, Glucose</td>
             </tr>
             <tr style="background: rgba(0,0,0,0.02);">
               <td style="padding: 8px; border-bottom: 1px solid #eee;">L3: Bio-degradable</td>
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">85</td>
               <td style="padding: 8px; text-align: center; border-bottom: 1px solid #eee;">10</td>
               <td style="padding: 8px; border-bottom: 1px solid #eee;">Meets standard definition of biodegradability</td>
-              <td style="padding: 8px; border-bottom: 1px solid #eee;">Methanol, propanol</td>
+              <td style="padding: 8px; border-bottom: 1px solid #eee;">Methanol, Acetone</td>
             </tr>
             <tr>
               <td style="padding: 8px; border-bottom: 1px solid #eee;">L4: Moderate degradation</td>

@@ -400,6 +400,37 @@ const QuestionPageYellow: React.FC<QuestionPageYellowProps> = ({ onClose }) => {
                     </div>
                   )}
 
+                  {question.referenceTable && (
+                    <div className="reference-table" style={{
+                      marginTop: '16px',
+                      padding: '16px 18px',
+                      background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      lineHeight: '1.8',
+                      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.15)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}>
+                      <strong style={{
+                        display: 'block',
+                        marginBottom: '12px',
+                        color: '#ffffff',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px'
+                      }}>📊 Reference Table</strong>
+                      <div style={{
+                        color: 'rgba(255, 255, 255, 0.95)',
+                        background: 'rgba(0, 0, 0, 0.1)',
+                        padding: '12px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
+                        dangerouslySetInnerHTML={{ __html: question.referenceTable }}
+                      />
+                    </div>
+                  )}
+
                 </div>
             )
           })}

@@ -26,6 +26,19 @@ function createWindow() {
     title: 'GAC Integra - Green Analytical Chemistry Integration Platform'
   });
 
+  // 监听窗口关闭事件，清除会话标记
+  mainWindow.on('closed', () => {
+    try {
+      // 清除会话标记，下次打开时显示登录界面
+      if (fs.existsSync(appStateStorage)) {
+        fs.unlinkSync(appStateStorage);
+      }
+      console.log('Window closed - session cleared');
+    } catch (error) {
+      console.error('Failed to clear session on close:', error);
+    }
+  });
+
   // 设置Content Security Policy
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({

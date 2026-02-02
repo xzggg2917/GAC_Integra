@@ -14,6 +14,7 @@ export interface Question {
     min?: number;
     max?: number;
   }>;
+  referenceTable?: string;
 }
 
 export interface Module {
@@ -132,7 +133,43 @@ export const yellowSocietyModules: Module[] = [
           { score: 60, description: 'Good: Limited exposure time with moderate hazards' },
           { score: 30, description: 'Fair: Extended exposure or higher hazard levels' },
           { score: 0, description: 'Poor: Prolonged exposure to highly toxic substances' }
-        ]
+        ],
+        referenceTable: `
+          <table style="width: 100%; border-collapse: collapse; background: rgba(255, 255, 255, 0.05); border-radius: 6px; overflow: hidden;">
+            <thead>
+              <tr style="background: rgba(255, 255, 255, 0.1);">
+                <th style="padding: 10px; text-align: left; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">Indicator 1: H (Hazard Weight) — Please select from the following options:</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>1. Score 1:</strong> Low toxicity or non-hazardous substances (e.g.: water, ethanol, acetone)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>2. Score 2:</strong> Mild hazard/irritant (e.g.: dilute acid, dilute alkali, isopropanol)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>3. Score 3:</strong> Moderate hazard/toxicity (e.g.: acetonitrile, methanol, n-hexane)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>4. Score 4:</strong> High hazard/strong corrosive/oxidizing (e.g.: concentrated nitric acid, 10% H₂O₂, potassium permanganate)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; color: rgba(255, 255, 255, 0.9);">
+                  <strong>5. Score 5:</strong> Highly toxic/carcinogenic/extremely hazardous (e.g.: chloroform, benzene, hydrogen peroxide solution reflux)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `
       },
       {
         id: 'q4',
@@ -161,7 +198,43 @@ export const yellowSocietyModules: Module[] = [
           { score: 60, description: 'Good: Adequate protection with moderate frequency' },
           { score: 30, description: 'Fair: Limited protection or high-frequency operations' },
           { score: 0, description: 'Poor: Insufficient protection with frequent operations' }
-        ]
+        ],
+        referenceTable: `
+          <table style="width: 100%; border-collapse: collapse; background: rgba(255, 255, 255, 0.05); border-radius: 6px; overflow: hidden;">
+            <thead>
+              <tr style="background: rgba(255, 255, 255, 0.1);">
+                <th style="padding: 10px; text-align: left; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">Indicator 1: N (Independent Protection Layers) — Please select from the following options:</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>1. Score 1:</strong> Basic personal protection only (e.g.: lab coat, gloves, goggles)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>2. Score 2:</strong> Personal protection + local ventilation facilities (e.g.: fume hood operation)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>3. Score 3:</strong> Personal protection + ventilation + automation equipment (e.g.: HPLC/UHPLC autosampler)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">
+                  <strong>4. Score 4:</strong> Personal protection + ventilation + automation + intrinsic safety design (e.g.: low-toxicity solvent substitution, closed-loop system)
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 8px; color: rgba(255, 255, 255, 0.9);">
+                  <strong>5. Score 5:</strong> Fully enclosed isolation system (e.g.: glove box, remote robot operation)
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `
       },
       {
         id: 'q5',

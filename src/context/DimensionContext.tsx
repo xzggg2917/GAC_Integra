@@ -56,16 +56,41 @@ export const DimensionProvider: React.FC<{ children: ReactNode }> = ({ children 
   // 使用 ref 来防止在初始加载时触发自动保存
   const isInitialMount = useRef(true)
 
-  // 应用启动时的初始化 - 始终从登录界面开始
+  // 应用启动时检查会话状态
   useEffect(() => {
     const initApp = async () => {
       try {
-        // 不自动加载之前的状态，每次都从登录界面开始
-        // const result = await ipcRenderer.invoke('auto-load')
-        // 保持初始状态，不加载任何数据
-        console.log('App initialized - showing cover page')
+        const result = await ipcRenderer.invoke('auto-load')
+        
+        if (result.success) {
+          // 如果有会话标记（appEntered），说明是刷新而不是重新打开
+          if (result.appEntered === true) {
+            // 恢复数据
+            if (result.data) {
+              if (result.data.selectedDimensions) setSelectedDimensions(result.data.selectedDimensions)
+              if (result.data.customWeights) setCustomWeights(result.data.customWeights)
+              if (result.data.scores) setScores(result.data.scores)
+              if (result.data.allAnswers) setAllAnswers(result.data.allAnswers)
+              if (result.data.questionWeights) setQuestionWeights(result.data.questionWeights)
+            }
+            
+            if (result.lastFilePath) {
+              setCurrentFilePathState(result.lastFilePath)
+            }
+            
+            if (result.currentPage) {
+              setCurrentPageState(result.currentPage)
+            }
+            
+            // 标记为已进入应用
+            setAppEntered(true)
+          } else {
+            // 没有会话标记，显示登录界面
+            console.log('No active session - showing cover page')
+          }
+        }
       } catch (error) {
-        console.error('Failed to initialize app:', error)
+        console.error('Failed to load app state:', error)
       } finally {
         setIsLoaded(true)
         isInitialMount.current = false

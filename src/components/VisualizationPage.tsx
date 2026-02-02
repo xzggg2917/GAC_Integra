@@ -390,9 +390,6 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           itemStyle: {
             color: questionColor
           },
-          label: {
-            color: dimension?.color || '#fff' // Use dimension theme color for question labels
-          },
           dimensionName: dimension?.name || dimId,
           questionText: questionText,
           answerText: answerDisplay,
@@ -432,9 +429,6 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
           color: dimensionColor,
           borderColor: dimension?.color || '#fff', // Use dimension theme color as border
           borderWidth: 4
-        },
-        label: {
-          color: dimension?.color || '#fff' // Set dimension-specific label color
         },
         children: questionChildren.length > 0 ? questionChildren : undefined,
         dimensionScore: score,
@@ -512,12 +506,11 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
             // Show just name for dimensions
             return params.name
           },
-          color: '#fff',
-          fontSize: 12,
+          color: '#000',
+          fontSize: 13,
+          fontFamily: 'Microsoft YaHei, SimHei, Arial, sans-serif',
           fontWeight: 'bold',
-          overflow: 'truncate',
-          textBorderColor: 'rgba(0, 0, 0, 0.8)',
-          textBorderWidth: 2
+          overflow: 'truncate'
         },
         breadcrumb: {
           show: false
@@ -623,8 +616,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
               rotate: 'radial',
               align: 'center',
               fontSize: 15,
-              fontWeight: 'bold'
-              // Color is set per-item via data.label.color
+              fontWeight: 'bold',
+              color: '#000'
             },
             itemStyle: {
               borderWidth: 3
@@ -637,8 +630,8 @@ const VisualizationPage: React.FC<VisualizationPageProps> = ({ onClose }) => {
             label: {
               rotate: 'radial',
               fontSize: 11,
-              fontWeight: 'bold'
-              // Color is set per-item via data.label.color
+              fontWeight: 'bold',
+              color: '#000'
             },
             itemStyle: {
               borderWidth: 1
