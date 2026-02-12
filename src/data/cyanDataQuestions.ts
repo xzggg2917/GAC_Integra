@@ -194,78 +194,7 @@ export const cyanDataModules: Module[] = [
           { score: 60, description: 'Good: Good metadata coverage with adequate backup redundancy' },
           { score: 30, description: 'Fair: Basic metadata with limited backup' },
           { score: 0, description: 'Poor: Minimal metadata or insufficient backup safety' }
-        ],
-        referenceTable: `
-          <table style="width: 100%; border-collapse: collapse; background: rgba(255, 255, 255, 0.05); border-radius: 6px; overflow: hidden;">
-            <thead>
-              <tr style="background: rgba(255, 255, 255, 0.1);">
-                <th style="padding: 10px; text-align: left; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">Level</th>
-                <th style="padding: 10px; text-align: center; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">D<sub>98</sub> (%)</th>
-                <th style="padding: 10px; text-align: center; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">H<sub>Life</sub> (天)</th>
-                <th style="padding: 10px; text-align: left; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">Environmental Description</th>
-                <th style="padding: 10px; text-align: left; color: #fff; font-weight: 600; border-bottom: 2px solid rgba(255, 255, 255, 0.2);">Common Examples</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L1: Instant integration</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">100</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">1</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Unstable, rapid conversion to various products</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Inorganic salts, Hydrogen peroxide</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L2: Excellent degradation</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">95</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">3</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Easily degraded by biological methods</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Ethanol, Acetic acid, Glucose</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L3: Bio-degradable</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">85</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">10</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Consistent with conventional degradation definition</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Methanol, Acetone</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L4: Moderate degradation</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">65</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">30</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Environmental pressure is small</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Isopropanol, Some mainstream chain esters</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L5: Difficult to degrade</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">45</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">60</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Requires specific removal components methods</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Acetone, Some single rings</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L6: Slow degradation</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">20</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">90</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Only one certain degree of fixed substance in environment</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Acetonitrile</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">L7: Extremely persistent</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">5</td>
-                <td style="padding: 8px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">200</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Difficult to degrade, complex gradual damage risks</td>
-                <td style="padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9);">Benzene, Tetrahydrofuran</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; color: rgba(255, 255, 255, 0.9);">L8: Ultra-persistent</td>
-                <td style="padding: 8px; text-align: center; color: rgba(255, 255, 255, 0.9);">1</td>
-                <td style="padding: 8px; text-align: center; color: rgba(255, 255, 255, 0.9);">365</td>
-                <td style="padding: 8px; color: rgba(255, 255, 255, 0.9);">Extremely stable with toxic environmental hazards</td>
-                <td style="padding: 8px; color: rgba(255, 255, 255, 0.9);">Chloroform</td>
-              </tr>
-            </tbody>
-          </table>
-        `
+        ]
       }
     ]
   }
